@@ -7,7 +7,7 @@ from datetime import date
 LAT = -19.9
 LON = -43.9
 
-#Pydantic model
+#Pydantic models
 #defines valid weather records
 class WeatherRecord(BaseModel):
     date: date
@@ -20,6 +20,19 @@ class WeatherResponse(BaseModel):
     lat: float
     lon: float
     records: list[WeatherRecord]
+
+class NasaRecord(BaseModel): # Highly archaic stuff, no null vlaues but -999.0 and LATE replies
+    date: date
+    solar_radiation: float  # W/m² solar energy received that day (MJ/m²/day = Watts per square meter)
+    humidity: float         # %, relative humidity 
+    wind_speed: float       # m/s
+
+class NasaResponse(BaseModel):
+    region: str
+    lat: float
+    lon: float
+    records: list[NasaRecord]
+
 
 
 
@@ -71,11 +84,63 @@ def parse_weather(raw: dict, region: str) -> WeatherResponse:
     )
 
 
-if __name__ == "__main__":
-    raw = fetch_raw_weather(LAT, LON)
-    weather = parse_weather(raw, region="minas_gerais")
+def fetch_raw_nasa(lat: float, lon: float) -> dict:
+    url="https://power.larc.nasa.gov/api/temporal/daily/point" #could do area but annoying
+    params = {
+        "parameters": "ALLSKY_SFC_SW_DWN,RH2M,WS2M",
+         #aka 'parameters': {'ALLSKY_SFC_SW_DWN': {'units': 'MJ/m^2/day', 'longname': 'All Sky Surface Shortwave Downward Irradiance'}, 'RH2M': {'units': '%', 'longname': 'Relative Humidity at 2 Meters'}, 'WS2M': {'units': 'm/s', 'longname': 'Wind Speed at 2 Meters'}}
+        "community": "AG",          # Agriculture profile, optimised for crops
+        "longitude": lon,
+        "latitude": lat,
+        "start": "20200101",        # NASA wants YYYYMMDD format with no dashes (-)
+        "end": "20241231",
+        "format": "JSON",
+    }
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    return response.json()
 
-    print(f"Region : {weather.region}")
-    print(f"Days : {len(weather.records)}")
-    print(f"First save : {weather.records[0]}")
-    print(f"Last save : {weather.records[-1]}")
+def parse_nasa(raw: dict, region: str) -> NasaResponse:
+    # NASA has diff structure from Open-Meteo
+    # raw["properties"]["parameter"]["ALLSKY_SFC_SW_DWN"] = {"20200101": 12.3, ...} aka each params gives you a date and their data
+    params = raw["properties"]["parameter"]
+    solar = params["ALLSKY_SFC_SW_DWN"]
+    humidity = params["RH2M"]
+    wind = params["WS2M"]
+
+    records = [
+        NasaRecord(
+            date = date(int(d[:4]), int(d[4:6]), int(d[6:])), #convert format
+            solar_radiation = solar[d] if solar[d] != -999.0 else 0.0,  # -999 = null in  this api apparently
+            humidity = humidity[d] if humidity[d] != -999.0 else 0.0,
+            wind_speed = wind[d] if wind[d] != -999.0 else 0.0,
+        )
+        for d in solar.keys()
+    ]
+    return NasaResponse(
+        region=region,
+        lat=raw["geometry"]["coordinates"][1],
+        lon=raw["geometry"]["coordinates"][0],
+        records=records,
+    )
+
+if __name__ == "__main__":
+    choice = input("Test (1) Open-Meteo or (2) NASA POWER ? ")
+    
+    if choice == "1":
+
+        raw = fetch_raw_weather(LAT, LON)
+        weather = parse_weather(raw, region="minas_gerais")
+
+        print(f"Region : {weather.region}")
+        print(f"Days : {len(weather.records)}")
+        print(f"First save : {weather.records[0]}")
+        print(f"Last save : {weather.records[-1]}")
+    elif choice == "2":
+        raw = fetch_raw_nasa(LAT, LON)
+        print(raw)
+        result = parse_nasa(raw, region="minas_gerais")
+        print(f"Region : {result.region}")
+        print(f"Days : {len(result.records)}")
+        print(f"First save : {result.records[0]}")
+        print(f"Last save : {result.records[-1]}")

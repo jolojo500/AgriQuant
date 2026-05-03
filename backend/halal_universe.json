@@ -1,0 +1,138 @@
+{
+  "last_verified": "2026-05-02",
+  "screener": "Zoya (AAOIFI methodology)",
+  "compliant": [
+    {
+      "ticker": "LNN",
+      "name": "Lindsay Corporation (irrigation)"
+    },
+    {
+      "ticker": "CTVA",
+      "name": "Corteva"
+    },
+    {
+      "ticker": "IPI",
+      "name": "Intrepid Potash"
+    },
+    {
+      "ticker": "INGR",
+      "name": "Ingredion"
+    },
+    {
+      "ticker": "CALM",
+      "name": "Cal-Maine Foods (eggs)"
+    },
+    {
+      "ticker": "WFCF",
+      "name": "Where Food Comes From"
+    },
+    {
+      "ticker": "VITL",
+      "name": "Vital Farms"
+    },
+    {
+      "ticker": "TRMB",
+      "name": "Trimble Navigation"
+    }
+  ],
+  "non_compliant": [
+    {
+      "ticker": "DE",
+      "name": "John Deere"
+    },
+    {
+      "ticker": "AGCO",
+      "name": "AGCO Corporation"
+    },
+    {
+      "ticker": "CNH",
+      "name": "CNH Industrial"
+    },
+    {
+      "ticker": "NTR",
+      "name": "Nutrien"
+    },
+    {
+      "ticker": "MOS",
+      "name": "Mosaic"
+    },
+    {
+      "ticker": "FMC",
+      "name": "FMC Corporation"
+    },
+    {
+      "ticker": "ADM",
+      "name": "Archer-Daniels-Midland"
+    },
+    {
+      "ticker": "BG",
+      "name": "Bunge"
+    },
+    {
+      "ticker": "HRL",
+      "name": "Hormel Foods"
+    },
+    {
+      "ticker": "TSN",
+      "name": "Tyson Foods"
+    },
+    {
+      "ticker": "TFII",
+      "name": "TFI International"
+    },
+    {
+      "ticker": "KRYS",
+      "name": "Krystal Biotech"
+    },
+    {
+      "ticker": "TRMK",
+      "name": "Trimble (precision ag)"
+    }
+  ],
+  "unknown": [
+    {
+      "ticker": "CNHI",
+      "name": "CNH Industrial (NYSE)"
+    },
+    {
+      "ticker": "IIHR",
+      "name": "Indica Industries"
+    },
+    {
+      "ticker": "SEED",
+      "name": "Origin Agritech"
+    },
+    {
+      "ticker": "SANW",
+      "name": "S&W Seed Company"
+    },
+    {
+      "ticker": "SAFM",
+      "name": "Sanderson Farms"
+    },
+    {
+      "ticker": "SFM",
+      "name": "Sprouts Farmers Market"
+    },
+    {
+      "ticker": "BAYRY",
+      "name": "Bayer AG (seeds/pesticides)"
+    },
+    {
+      "ticker": "SYT",
+      "name": "Syngenta"
+    },
+    {
+      "ticker": "AG",
+      "name": "First Majestic (silver/AG symbol)"
+    },
+    {
+      "ticker": "RAVN",
+      "name": "Raven Industries"
+    },
+    {
+      "ticker": "TRIMBLE",
+      "name": "Trimble"
+    }
+  ]
+}

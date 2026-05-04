@@ -6,7 +6,7 @@ from etl.transform_config import (
     YIELD_COUNTRIES, LAG_FEATURES, START_YEAR, END_YEAR
 )
 from etl.extract_weather import fetch_raw_weather, parse_weather, fetch_raw_nasa, parse_nasa
-
+from etl.extract_prices import fetch_prices, load_halal_universe
 
 def weather_response_to_df(region: dict) -> pd.DataFrame:
     """
@@ -108,6 +108,55 @@ def build_weather_features() -> pd.DataFrame:
     return df_combined
 
 
+def price_response_to_df(ticker: str) -> pd.DataFrame:
+    """Converts PriceResponse to a clean daily DataFrame."""
+    result = fetch_prices(ticker)
+    df = pd.DataFrame([r.model_dump() for r in result.records])
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    return df
+
+
+def build_stock_features() -> pd.DataFrame:
+    """
+    Aggregates daily stock prices to quarterly returns for all halal universe tickers.
+    Each row = one quarter x one ticker.
+    """
+    universe = load_halal_universe()
+    all_stocks = []
+
+    for stock in universe:
+        ticker = stock["ticker"]
+        print(f"  Processing {ticker}...")
+
+        df = price_response_to_df(ticker)
+
+        quarterly = df["close"].resample("QS").agg( #must agg because resample q1 basically gives us a group of daily data per Q
+            price_start="first", #column price_start takes the first value ("close" price) of the quarter
+            price_end="last",
+        )# notice how here df has ["close"] which means thatwe dont the the {} dict defining do what at column a b c
+        quarterly["volume_avg"] = df["volume"].resample("QS").mean()
+        quarterly["stock_return"] = (
+            (quarterly["price_end"] - quarterly["price_start"])
+            / quarterly["price_start"]
+            * 100
+        ).round(4)
+        quarterly["stock_return_next_q"] = quarterly["stock_return"].shift(-1) #-1 means future (returns next q stock_return) +1 would be past, counter intuitive ngl
+        # stock_return_next_q is our target (y), it isnt a lag feature so its fine to do here. 
+        # a lag feature would be a remnant of the past useful, in our case will be stock_return of previous Q which could be a factor that influence current and next Q
+        quarterly["ticker"] = ticker
+
+        all_stocks.append(quarterly)
+
+    df_all = pd.concat(all_stocks)
+    df_all = df_all[
+        (df_all.index.year >= START_YEAR) &
+        (df_all.index.year <= END_YEAR)
+    ]
+
+    return df_all
+
+
 if __name__ == "__main__":
     print("Step 1: Building weather features...")
     df_weather = build_weather_features()
@@ -118,3 +167,12 @@ if __name__ == "__main__":
     for col in df_weather.columns:
         print(f"  {col}")
     print(f"\nFirst row:\n{df_weather.iloc[0]}")
+
+    print("\nStep 2: Building stock features...")
+    df_stocks = build_stock_features()
+
+    print(f"\nShape: {df_stocks.shape}")
+    print(f"\nSample (CTVA):")
+    print(df_stocks[df_stocks["ticker"] == "CTVA"][
+        ["price_start", "price_end", "stock_return", "stock_return_next_q"]
+    ])

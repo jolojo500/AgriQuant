@@ -42,8 +42,8 @@ def fetch_raw_weather(lat: float, lon: float) -> dict:
     params = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": "2020-01-01",
-        "end_date": "2024-12-31",
+        "start_date": "2019-01-01",
+        "end_date": "2025-12-31",
         "daily": [
             "precipitation_sum",
             "temperature_2m_max",
@@ -92,8 +92,8 @@ def fetch_raw_nasa(lat: float, lon: float) -> dict:
         "community": "AG",          # Agriculture profile, optimised for crops
         "longitude": lon,
         "latitude": lat,
-        "start": "20200101",        # NASA wants YYYYMMDD format with no dashes (-)
-        "end": "20241231",
+        "start": "20190101",        # NASA wants YYYYMMDD format with no dashes (-)
+        "end": "20251231",
         "format": "JSON",
     }
     response = requests.get(url, params=params)

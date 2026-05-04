@@ -7,6 +7,7 @@ from etl.transform_config import (
 )
 from etl.extract_weather import fetch_raw_weather, parse_weather, fetch_raw_nasa, parse_nasa
 from etl.extract_prices import fetch_prices, load_halal_universe
+from etl.extract_yields import download_faostat_bulk, parse_yields, FAO_CROPS, FAO_COUNTRIES
 
 def weather_response_to_df(region: dict) -> pd.DataFrame:
     """
@@ -157,6 +158,48 @@ def build_stock_features() -> pd.DataFrame:
     return df_all
 
 
+def yield_response_to_df(crop: str, country: str, df_fao: pd.DataFrame) -> pd.DataFrame:
+    """Converts a YieldResponse to a clean annual DataFrame."""
+    result = parse_yields(df_fao, crop, country)
+    df = pd.DataFrame([r.model_dump() for r in result.records])
+    return df
+
+def build_yield_features(df_fao: pd.DataFrame) -> pd.DataFrame:
+    """
+    Builds a quarterly yield feature DataFrame.
+    Since yields are annual, we repeat each year's value
+    across all 4 quarters of that year.
+    Each row = one quarter, columns = all crop/country combinations.
+    """
+    # Start with a quarterly date range as the backbone
+    quarters = pd.date_range(
+        start=f"{START_YEAR}-01-01",
+        end=f"{END_YEAR}-12-31",
+        freq="QS"
+    )
+    df_combined = pd.DataFrame(index=quarters)
+
+    for crop in FAO_CROPS:
+        for country in FAO_COUNTRIES:
+            col_name = f"yield_{crop}_{country}_t_ha"
+            try:
+                df_yield = yield_response_to_df(crop, country, df_fao)
+
+                if df_yield.empty:
+                    continue
+
+                # Map each quarter to its year's yield value
+                # ex: 2020-Q1, Q2, Q3, Q4 all get yield_2020
+                df_combined[col_name] = df_combined.index.year.map(
+                    df_yield.set_index("year")["yield_tonnes_ha"]
+                )
+
+            except Exception:
+                # Some crop/country combos don't exist (ex: cassava/canada)
+                pass
+
+    return df_combined
+
 if __name__ == "__main__":
     print("Step 1: Building weather features...")
     df_weather = build_weather_features()
@@ -176,3 +219,11 @@ if __name__ == "__main__":
     print(df_stocks[df_stocks["ticker"] == "CTVA"][
         ["price_start", "price_end", "stock_return", "stock_return_next_q"]
     ])
+
+    print("\nStep 3: Building yield features...")
+    df_fao = download_faostat_bulk()
+    df_yields = build_yield_features(df_fao)
+
+    print(f"\nShape: {df_yields.shape}")
+    print(f"\nSample columns: {list(df_yields.columns[:5])}")
+    print(f"\nFirst row:\n{df_yields.iloc[0]}")

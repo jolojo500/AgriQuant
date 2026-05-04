@@ -5,6 +5,7 @@ __pycache__/
 *.pyo
 *.pkl
 backend/.env
+backend/faostat_cache.csv
 
 # Node
 frontend/node_modules/

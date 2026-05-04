@@ -200,9 +200,106 @@ def build_yield_features(df_fao: pd.DataFrame) -> pd.DataFrame:
 
     return df_combined
 
+
+def add_weather_lags(df_weather: pd.DataFrame) -> pd.DataFrame:
+    new_cols = {}
+    for col_pattern, lag in LAG_FEATURES:
+        if "yield" in col_pattern or "stock" in col_pattern:
+            continue
+        for region in WEATHER_REGIONS:
+            name = region["name"]
+            matching = [
+                c for c in df_weather.columns
+                if name in c and col_pattern.split("_")[0] in c
+                and "lag" not in c
+            ]
+            for col in matching:
+                new_cols[f"{col}_lag{lag}q"] = df_weather[col].shift(lag)
+
+    return pd.concat([df_weather, pd.DataFrame(new_cols, index=df_weather.index)], axis=1)
+
+
+def add_yield_lags(df_yields: pd.DataFrame) -> pd.DataFrame:
+    new_cols = {}
+    for col_pattern, lag in LAG_FEATURES:
+        if "yield" not in col_pattern:
+            continue
+        for col in df_yields.columns:
+            if "yield" in col and "lag" not in col:
+                new_cols[f"{col}_lag1y"] = df_yields[col].shift(lag)
+
+    return pd.concat([df_yields, pd.DataFrame(new_cols, index=df_yields.index)], axis=1)
+
+
+def add_stock_lags(df_stocks: pd.DataFrame) -> pd.DataFrame:
+    result = []
+    for ticker in df_stocks["ticker"].unique():
+        df_ticker = df_stocks[df_stocks["ticker"] == ticker].copy()
+        new_cols = {}
+
+        for col_pattern, lag in LAG_FEATURES:
+            if "stock" not in col_pattern:
+                continue
+            matching = [
+                c for c in df_ticker.columns
+                if col_pattern.split("_")[0] in c
+                and "lag" not in c
+                and c != "ticker"
+            ]
+            for col in matching:
+                new_cols[f"{col}_lag{lag}q"] = df_ticker[col].shift(lag)
+
+        df_ticker = pd.concat(
+            [df_ticker, pd.DataFrame(new_cols, index=df_ticker.index)], axis=1
+        )
+        result.append(df_ticker)
+
+    return pd.concat(result).sort_index()
+
+
+def build_ml_dataset(
+    df_weather: pd.DataFrame,
+    df_stocks: pd.DataFrame,
+    df_yields: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Merges weather, stock, and yield features into one ML-ready DataFrame.
+    Each row = one quarter x one stock ticker.
+    
+    Structure:
+    - index: quarter start date
+    - columns: all weather features + all yield features + stock features + target
+    """
+    all_rows = []
+
+    tickers = df_stocks["ticker"].unique()
+
+    for ticker in tickers:
+        # Get stock data for this ticker
+        df_ticker = df_stocks[df_stocks["ticker"] == ticker].copy()
+        df_ticker = df_ticker.drop(columns=["ticker"])
+
+        # Merge weather (same for all tickers — weather doesn't depend on stock)
+        df_ticker = df_ticker.join(df_weather, how="left")
+
+        # Merge yields (same for all tickers)
+        df_ticker = df_ticker.join(df_yields, how="left")
+
+        # Add ticker column back
+        df_ticker["ticker"] = ticker
+
+        all_rows.append(df_ticker)
+
+    df_ml = pd.concat(all_rows)
+    df_ml = df_ml.sort_index()
+
+    return df_ml
+
+
 if __name__ == "__main__":
     print("Step 1: Building weather features...")
     df_weather = build_weather_features()
+    df_weather = add_weather_lags(df_weather)
 
     print(f"\nShape: {df_weather.shape}")
     print(f"Quarters: {df_weather.index[0]} → {df_weather.index[-1]}")
@@ -211,8 +308,10 @@ if __name__ == "__main__":
         print(f"  {col}")
     print(f"\nFirst row:\n{df_weather.iloc[0]}")
 
+
     print("\nStep 2: Building stock features...")
     df_stocks = build_stock_features()
+    df_stocks = add_stock_lags(df_stocks)
 
     print(f"\nShape: {df_stocks.shape}")
     print(f"\nSample (CTVA):")
@@ -220,10 +319,27 @@ if __name__ == "__main__":
         ["price_start", "price_end", "stock_return", "stock_return_next_q"]
     ])
 
+
     print("\nStep 3: Building yield features...")
     df_fao = download_faostat_bulk()
     df_yields = build_yield_features(df_fao)
+    df_yields = add_yield_lags(df_yields)
 
     print(f"\nShape: {df_yields.shape}")
     print(f"\nSample columns: {list(df_yields.columns[:5])}")
     print(f"\nFirst row:\n{df_yields.iloc[0]}")
+
+     
+    print("\nStep 4: Building ML dataset...")
+    df_ml = build_ml_dataset(df_weather, df_stocks, df_yields)
+
+    print(f"\nShape: {df_ml.shape}")
+    print(f"Tickers: {df_ml['ticker'].unique()}")
+
+    #print(f"\nColumns ({len(df_ml.columns)}):")
+    #print(f"  Weather : {len([c for c in df_ml.columns if any(r['name'] in c for r in WEATHER_REGIONS)])}")
+    #print(f"  Yields  : {len([c for c in df_ml.columns if 'yield' in c])}")
+    #print(f"  Stock   : {len([c for c in df_ml.columns if c in ['price_start','price_end','volume_avg','stock_return','stock_return_next_q','ticker']])}")
+    #print(f"\nSample row (CTVA, Q1 2020):")
+    #sample = df_ml[(df_ml["ticker"] == "CTVA") & (df_ml.index.year == 2020) & (df_ml.index.quarter == 1)]
+    #print(sample[["price_start", "price_end", "stock_return", "stock_return_next_q", "iowa_rainfall_mm", "yield_maize_usa_t_ha"]].to_string())

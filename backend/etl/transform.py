@@ -49,7 +49,7 @@ def aggregate_weather_quarterly(df_daily: pd.DataFrame, region_name: str) -> pd.
     - heat_stress_days: count of days with temp_max > 35°C
     """
     # Resample to quarters , QS = Quarter Start for example starts at 2020-01-01 until 2020-04-01
-    quarterly = df_daily.resample("QS").agg({ 
+    base = df_daily.resample("QS").agg({ 
         "rainfall_mm":      "sum",    # total rain this quarter
         "temp_max":         "mean",   # avg of daily max temps
         "temp_min":         "mean",   # avg of daily min temps
@@ -59,24 +59,33 @@ def aggregate_weather_quarterly(df_daily: pd.DataFrame, region_name: str) -> pd.
     })
 
     # Custom features, can't do these with simple agg
-    quarterly["drought_days"] = (
+    drought_days = (
         df_daily["rainfall_mm"]
         .resample("QS")
-        .apply(lambda x: (x < 2.0).sum())  # count days with < 2mm rain
-    )
+        .apply(lambda x: (x < 2.0).sum())
+        .rename("drought_days")
+    )# we define custom things before affecting them to wahetevr (base["whatever"] = etc) because fragmentation
 
-    quarterly["heat_stress_days"] = (
+    heat_stress_days = (
         df_daily["temp_max"]
         .resample("QS")
-        .apply(lambda x: (x > 35.0).sum())  # count days above 35°C
+        .apply(lambda x: (x > 35.0).sum())
+        .rename("heat_stress_days")
     )
 
-    # Add region prefix to all columns so we know where data comes from
-    # ex: "rainfall_mm" → "iowa_rainfall_mm"
-    quarterly.columns = [f"{region_name}_{col}" for col in quarterly.columns]
+    quarter_labels = pd.Series(
+        base.index.to_period("Q").astype(str),
+        index=base.index,
+        name="quarter",
+    )
 
-    # Add quarter label column for readability
-    quarterly["quarter"] = quarterly.index.to_period("Q").astype(str) #index is date, we already aggreagated (grouped) by quarter so it knowns wihch Q it is (2020Q1 etc)
+    # a single concat means no fragmentation so it is more efficient
+    quarterly = pd.concat([base, drought_days, heat_stress_days, quarter_labels], axis=1)
+
+    quarterly.columns = [
+        f"{region_name}_{col}" if col != "quarter" else col
+        for col in quarterly.columns
+    ]
 
     return quarterly
 
@@ -132,6 +141,7 @@ def build_stock_features() -> pd.DataFrame:
 
         df = price_response_to_df(ticker)
 
+        """ old code had fragmentation warnings
         quarterly = df["close"].resample("QS").agg( #must agg because resample q1 basically gives us a group of daily data per Q
             price_start="first", #column price_start takes the first value ("close" price) of the quarter
             price_end="last",
@@ -146,7 +156,27 @@ def build_stock_features() -> pd.DataFrame:
         # stock_return_next_q is our target (y), it isnt a lag feature so its fine to do here. 
         # a lag feature would be a remnant of the past useful, in our case will be stock_return of previous Q which could be a factor that influence current and next Q
         quarterly["ticker"] = ticker
+        """
 
+        
+        prices = df["close"].resample("QS").agg(price_start="first", price_end="last")
+        volume_avg = df["volume"].resample("QS").mean().rename("volume_avg")
+
+        stock_return = (
+            (prices["price_end"] - prices["price_start"])
+            / prices["price_start"]
+            * 100
+        ).round(4).rename("stock_return")
+
+        stock_return_next_q = stock_return.shift(-1).rename("stock_return_next_q")
+
+        # Single concat for all 4 columns means no fragmentation
+        quarterly = pd.concat(
+            [prices, volume_avg, stock_return, stock_return_next_q],
+            axis=1,
+        )
+        quarterly["ticker"] = ticker  #single assignement so its fine
+        
         all_stocks.append(quarterly)
 
     df_all = pd.concat(all_stocks)
@@ -177,26 +207,26 @@ def build_yield_features(df_fao: pd.DataFrame) -> pd.DataFrame:
         end=f"{END_YEAR}-12-31",
         freq="QS"
     )
-    df_combined = pd.DataFrame(index=quarters)
+   
+    #we do a dict to concat once instead of inserting many times
+    columns: dict[str, pd.Series] = {}
 
     for crop in FAO_CROPS:
         for country in FAO_COUNTRIES:
             col_name = f"yield_{crop}_{country}_t_ha"
             try:
                 df_yield = yield_response_to_df(crop, country, df_fao)
-
                 if df_yield.empty:
                     continue
-
-                # Map each quarter to its year's yield value
-                # ex: 2020-Q1, Q2, Q3, Q4 all get yield_2020
-                df_combined[col_name] = df_combined.index.year.map(
-                    df_yield.set_index("year")["yield_tonnes_ha"]
+                columns[col_name] = pd.Series(
+                    quarters.year.map(df_yield.set_index("year")["yield_tonnes_ha"]),
+                    index=quarters,
                 )
-
             except Exception:
-                # Some crop/country combos don't exist (ex: cassava/canada)
-                pass
+                pass  # cassava/canada etc.
+
+    # Dataframe made once from the full dict
+    df_combined = pd.DataFrame(columns, index=quarters)
 
     return df_combined
 
@@ -245,6 +275,7 @@ def add_stock_lags(df_stocks: pd.DataFrame) -> pd.DataFrame:
                 if col_pattern.split("_")[0] in c
                 and "lag" not in c
                 and c != "ticker"
+                and c != "stock_return_next_q"
             ]
             for col in matching:
                 new_cols[f"{col}_lag{lag}q"] = df_ticker[col].shift(lag)
@@ -314,10 +345,13 @@ if __name__ == "__main__":
     df_stocks = add_stock_lags(df_stocks)
 
     print(f"\nShape: {df_stocks.shape}")
+    print(df_stocks)
     print(f"\nSample (CTVA):")
     print(df_stocks[df_stocks["ticker"] == "CTVA"][
         ["price_start", "price_end", "stock_return", "stock_return_next_q"]
     ])
+    print(f"\nSample (CTVA) FULL:")
+    print(df_stocks[df_stocks["ticker"] == "CTVA"])
 
 
     print("\nStep 3: Building yield features...")

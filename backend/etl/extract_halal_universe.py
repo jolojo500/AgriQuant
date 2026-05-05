@@ -20,6 +20,7 @@ AG_CANDIDATES = {
     "NTR": "Nutrien",
     "MOS": "Mosaic",
     "CTVA": "Corteva",
+    #"DD": "DuPont de Nemours", #ctva and DD were together, might still have relevant activity that gets affected
     "FMC": "FMC Corporation",
     "IPI": "Intrepid Potash",
     "SEED": "Origin Agritech",

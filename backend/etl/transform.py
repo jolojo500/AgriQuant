@@ -8,6 +8,7 @@ from etl.transform_config import (
 from etl.extract_weather import fetch_raw_weather, parse_weather, fetch_raw_nasa, parse_nasa
 from etl.extract_prices import fetch_prices, load_halal_universe
 from etl.extract_yields import download_faostat_bulk, parse_yields, FAO_CROPS, FAO_COUNTRIES
+import time
 
 def weather_response_to_df(region: dict) -> pd.DataFrame:
     """
@@ -102,6 +103,7 @@ def build_weather_features() -> pd.DataFrame:
         df_daily = weather_response_to_df(region)
         df_quarterly = aggregate_weather_quarterly(df_daily, region["name"])
         all_regions.append(df_quarterly)
+        time.sleep(1) #added because got too many request err aka rate limiting
 
     # Merge all regions side by side on the date (whis is the index)
     df_combined = pd.concat(all_regions, axis=1)

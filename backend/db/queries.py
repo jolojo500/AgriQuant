@@ -127,3 +127,18 @@ def save_training_run(
         "baseline_rmse": round(baseline_rmse, 4), #baseline basically is lazy prediction which is "0% next quarter", this ends up meaning that rmse of the baseline is simply the standard deviation and if we beat it then the model actually learned relevant things and isnt just spouting out random noise
     }).execute()    
     print("  Training run logged to Supabase")
+
+def read_weather_latest_by_region(region: str, days: int = 90) -> list[dict]:
+    """
+    Returns the most recent N days of weather data for one region.
+    Used by the API to build globe overlays.
+    """
+    response = (
+        supabase.table("raw_weather")
+        .select("*")
+        .eq("region", region)
+        .order("date", desc=True)
+        .limit(days) # 90 is about a quarter
+        .execute()
+    )
+    return response.data

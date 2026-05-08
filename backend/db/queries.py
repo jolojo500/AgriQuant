@@ -98,3 +98,32 @@ def read_predictions(ticker: str | None = None) -> pd.DataFrame:
 
     response = query.order("created_at").execute()
     return pd.DataFrame(response.data)
+
+def save_training_run(
+    best_model:        str,
+    rmse_ols:          float,
+    rmse_rf:           float,
+    rmse_xgb:          float,
+    best_rmse:         float,
+    n_features:        int,
+    n_rows:            int,
+    start_year:        int,
+    train_quarters:    int,
+    feature_importance: dict, 
+    baseline_rmse: float,
+) -> None:
+    """Logs each training run with RMSE scores and feature importances."""
+    supabase.table("ml_training_runs").insert({
+        "best_model":          best_model,
+        "rmse_ols":            round(rmse_ols,  4),
+        "rmse_rf":             round(rmse_rf,   4),
+        "rmse_xgb":            round(rmse_xgb,  4),
+        "best_rmse":           round(best_rmse, 4),
+        "n_features":          n_features,
+        "n_rows":              n_rows,
+        "start_year":          start_year,
+        "train_quarters":      train_quarters,
+        "feature_importance":  feature_importance,  #jsonb, Supabase auto does dict serialisation
+        "baseline_rmse": round(baseline_rmse, 4), #baseline basically is lazy prediction which is "0% next quarter", this ends up meaning that rmse of the baseline is simply the standard deviation and if we beat it then the model actually learned relevant things and isnt just spouting out random noise
+    }).execute()    
+    print("  Training run logged to Supabase")

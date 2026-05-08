@@ -28,7 +28,7 @@ class PriceResponse(BaseModel):
 def fetch_prices(ticker: str) -> PriceResponse:
     raw = yf.download(
         ticker,
-        start="2019-01-01",
+        start="2015-01-01",
         end="2025-12-31",
         auto_adjust=True, #auto split
         progress=False,   #progress bar

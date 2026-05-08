@@ -143,19 +143,20 @@ if __name__ == "__main__":
     all_prices = fetch_all_prices()
     load_raw_prices(all_prices)
 
-    print("\nStep 2 & 4a: Fetching weather...")
-    for region in WEATHER_REGIONS:
-        raw_weather = fetch_raw_weather(region["lat"], region["lon"])
-        weather     = parse_weather(raw_weather, region["name"])
-        raw_nasa    = fetch_raw_nasa(region["lat"], region["lon"])
-        nasa        = parse_nasa(raw_nasa, region["name"])
-        load_raw_weather(weather, nasa)  # raw insert
-        time.sleep(2)  #Slow but makes so no rate limit in step 4          
+    #print("\nStep 2 & 4a: Fetching weather...")
+    #for region in WEATHER_REGIONS:
+    #    raw_weather = fetch_raw_weather(region["lat"], region["lon"])
+    #    weather     = parse_weather(raw_weather, region["name"])
+    #    raw_nasa    = fetch_raw_nasa(region["lat"], region["lon"])
+    #    nasa        = parse_nasa(raw_nasa, region["name"])
+    #    load_raw_weather(weather, nasa)  # raw insert
+    #    time.sleep(4)  #Slow but makes so no rate limit in step 4          
 
     print("\nStep 3: Loading raw yields...")
     df_fao = download_faostat_bulk()
     all_yields = fetch_all_yields(df_fao)
     load_raw_yields(all_yields)
+    time.sleep(60)
 
     print("\nStep 4: Building and loading ML features...")
     df_weather = add_weather_lags(build_weather_features())

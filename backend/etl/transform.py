@@ -103,7 +103,7 @@ def build_weather_features() -> pd.DataFrame:
         df_daily = weather_response_to_df(region)
         df_quarterly = aggregate_weather_quarterly(df_daily, region["name"])
         all_regions.append(df_quarterly)
-        time.sleep(1) #added because got too many request err aka rate limiting
+        time.sleep(10) #added because got too many request err aka rate limiting
 
     # Merge all regions side by side on the date (whis is the index)
     df_combined = pd.concat(all_regions, axis=1)

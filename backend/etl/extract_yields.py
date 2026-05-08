@@ -92,7 +92,7 @@ def parse_yields(df: pd.DataFrame, crop: str, country: str) -> YieldResponse:
     filtered = df[
         (df["Item"] == crop_name) &
         (df["Area"] == country_name) &
-        (df["Year"].between(2019, 2025))
+        (df["Year"].between(2015, 2025))
     ].copy()
 
     if filtered.empty:

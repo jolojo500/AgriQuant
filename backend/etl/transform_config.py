@@ -91,5 +91,5 @@ LAG_FEATURES = [
 TARGET = "stock_return_next_q"
 
 # --- Date range ---
-START_YEAR = 2019
+START_YEAR = 2015 #2019
 END_YEAR   = 2025

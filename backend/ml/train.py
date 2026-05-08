@@ -5,11 +5,12 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
-from db.queries import read_ml_features
+from etl.transform_config import START_YEAR
+from db.queries import read_ml_features, save_training_run
 
 # Minimum quarters needed before we start predicting
 # 12 quarters = 3 years of training data minimum
-MIN_TRAIN_QUARTERS = 12
+MIN_TRAIN_QUARTERS = 16 #12
 
 MODEL_PATH = "ml/model.pkl"
 
@@ -109,7 +110,7 @@ def train_final_model(X: pd.DataFrame, y: pd.Series, model) -> object:
     return model
 
 
-def print_feature_importance(model, X: pd.DataFrame, model_name: str) -> None:
+def print_feature_importance(model, X: pd.DataFrame, model_name: str) -> dict:
     """
     Prints the top 15 most important features.
     This is the quant-readable part, shows which signals actually matter.
@@ -135,6 +136,8 @@ def print_feature_importance(model, X: pd.DataFrame, model_name: str) -> None:
 
     for name, score in ranked[:15]:
         print(f"  {name:50} {score:.4f}")
+    # Return full dict sorted by importance — used by save_training_run in __main__
+    return {col: round(float(score), 6) for col, score in ranked}
 
 
 if __name__ == "__main__":
@@ -180,5 +183,21 @@ if __name__ == "__main__":
     }, MODEL_PATH)
     print(f"Saved to {MODEL_PATH}")
 
+    baseline_rmse = float(y.std())
+    print(f"  Baseline (predict 0%)  → RMSE: {baseline_rmse:.4f}%")
+
     # Feature importance — the quant-readable part
-    print_feature_importance(final_model, X, best_name)
+    feature_importance_dict = print_feature_importance(final_model, X, best_name)
+    save_training_run(
+        best_model          = best_name,
+        rmse_ols            = results["OLS"][0],
+        rmse_rf             = results["Random Forest"][0],
+        rmse_xgb            = results["XGBoost"][0],
+        best_rmse           = best_rmse,
+        n_features          = X.shape[1],
+        n_rows              = X.shape[0],
+        start_year          = START_YEAR,
+        train_quarters      = MIN_TRAIN_QUARTERS,
+        feature_importance  = feature_importance_dict,
+        baseline_rmse       = baseline_rmse,
+    )

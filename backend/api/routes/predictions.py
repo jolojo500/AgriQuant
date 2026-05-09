@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from db.queries import read_predictions
 from ml.predict import predict_next_quarter
-from api.schemas import PredictionResponse, PredictionHistoryResponse, RankingsResponse
+from api.schemas import PredictionResponse, PredictionHistoryResponse, PredictionRecord, RankingsResponse, RankingRecord
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ def predict(ticker: str, quarter: str):
     """
     try:
         result = predict_next_quarter(ticker.upper(), quarter)
-        return result
+        return PredictionResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -29,12 +29,19 @@ def get_prediction_history(ticker: str):
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No predictions for {ticker}")
 
-    return {
-        "ticker":      ticker.upper(),
-        "predictions": df[[
-            "quarter", "predicted_return", "actual_return", "model_version", "created_at"
-        ]].to_dict(orient="records"),
-    }
+    return PredictionHistoryResponse(
+        ticker=ticker.upper(),
+        predictions=[
+            PredictionRecord(**record)
+            for record in df[[
+                "quarter",
+                "predicted_return",
+                "actual_return",
+                "model_version",
+                "created_at"
+            ]].to_dict(orient="records")
+        ]
+    )
 
 
 @router.get("/rankings", response_model=RankingsResponse)
@@ -46,7 +53,7 @@ def get_rankings():
     df = read_predictions()
 
     if df.empty:
-        return {"rankings": []}
+        return RankingsResponse(rankings=[])
 
     # Keep only the most recent prediction per ticker
     latest = (
@@ -57,8 +64,14 @@ def get_rankings():
         .sort_values("predicted_return", ascending=False)
     )
 
-    return {
-        "rankings": latest[[
-            "ticker", "predicted_return", "quarter", "model_version"
-        ]].to_dict(orient="records")
-    }
+    return RankingsResponse(
+        rankings=[
+            RankingRecord(**record)
+            for record in latest[[
+                "ticker",
+                "predicted_return",
+                "quarter",
+                "model_version"
+            ]].to_dict(orient="records")
+        ]
+    )

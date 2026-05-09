@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from db.queries import read_raw_prices
 import json
 from pathlib import Path
-from api.schemas import TickersResponse
+from api.schemas import TickersResponse, TickerInfo
 
 router = APIRouter()
 
@@ -16,9 +16,12 @@ def get_tickers():
     with open(universe_path) as f:
         data = json.load(f)
 
-    return {
-        "tickers": [
-            {"ticker": s["ticker"], "name": s["name"]}
+    return TickersResponse(
+        tickers=[
+            TickerInfo(
+                ticker=s["ticker"],
+                name=s["name"]
+            )
             for s in data["compliant"]
         ]
-    }
+    )

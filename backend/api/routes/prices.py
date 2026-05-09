@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from db.queries import read_raw_prices
-from api.schemas import PricesResponse
+from api.schemas import PricesResponse, PriceRecord
 
 router = APIRouter()
 
@@ -15,7 +15,11 @@ def get_prices(ticker: str):
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No prices found for {ticker}")
 
-    return {
-        "ticker": ticker.upper(),
-        "prices": df[["date", "close", "volume"]].to_dict(orient="records"),
-    }
+    df["date"] = df["date"].astype(str)
+    return PricesResponse(
+    ticker=ticker.upper(),
+    prices=[
+        PriceRecord(**record)
+        for record in df[["date", "close", "volume"]].to_dict(orient="records")
+        ]
+    )

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from db.queries import read_weather_latest_by_region
 from etl.transform_config import WEATHER_REGIONS
-from api.schemas import WeatherResponse
+from api.schemas import WeatherResponse, WeatherRegion
 
 router = APIRouter()
 
@@ -27,13 +27,15 @@ def get_weather_regions():
         temp_max   = sum(r["temp_max"]     or 0 for r in rows) / len(rows)
         humidity   = sum(r["humidity"]     or 0 for r in rows) / len(rows)
 
-        results.append({
-            "region":     name,
-            "lat":        region["lat"],
-            "lon":        region["lon"],
-            "rainfall_mm": round(rainfall, 1),
-            "temp_max":    round(temp_max, 1),
-            "humidity":    round(humidity, 1),
-        })
+        results.append(
+            WeatherRegion(
+                region=name,
+                lat=region["lat"],
+                lon=region["lon"],
+                rainfall_mm=round(rainfall, 1),
+                temp_max=round(temp_max, 1),
+                humidity=round(humidity, 1),
+            )
+        )
 
-    return {"regions": results}
+    return WeatherResponse(regions=results)

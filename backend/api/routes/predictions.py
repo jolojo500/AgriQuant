@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from db.queries import read_predictions
 from ml.predict import predict_next_quarter
-from api.schemas import PredictionResponse, PredictionHistoryResponse, PredictionRecord, RankingsResponse, RankingRecord
+from api.schemas import PredictionResponse, PredictionHistoryResponse, PredictionRecord, RankingsResponse, RankingRecord, ReliabilityRecord, ReliabilityResponse
 
 router = APIRouter()
 
@@ -74,4 +74,36 @@ def get_rankings():
                 "model_version"
             ]].to_dict(orient="records")
         ]
+    )
+
+@router.get("/reliability", response_model=ReliabilityResponse)
+def get_reliability():
+    """
+    Ranks tickers by direction accuracy 
+    (% of closed quarters where predicted sign == actual sign).
+    Only counts quarters where actual_return is not null.
+    """
+    df = read_predictions()  # all tickers
+    df = df.dropna(subset=["actual_return"])
+    
+    if df.empty:
+        return ReliabilityResponse(rankings=[])
+
+    df["correct_direction"] = (
+        df["predicted_return"].apply(lambda x: 1 if x >= 0 else -1) ==
+        df["actual_return"].apply(lambda x: 1 if x >= 0 else -1)
+    )
+
+    reliability = (
+        df.groupby("ticker")
+        .agg(
+            direction_accuracy=("correct_direction", "mean"),
+            n_predictions=("correct_direction", "count"),
+        )
+        .reset_index()
+        .sort_values("direction_accuracy", ascending=False)
+    )
+
+    return ReliabilityResponse(
+        rankings=[ReliabilityRecord(**r) for r in reliability.to_dict(orient="records")]
     )

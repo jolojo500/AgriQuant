@@ -55,3 +55,11 @@ class RankingRecord(BaseModel):
 
 class RankingsResponse(BaseModel):
     rankings: list[RankingRecord]
+
+class ReliabilityRecord(BaseModel):
+    ticker:             str
+    direction_accuracy: float   # ex: 0.67 = good for 67 (lol)% of quarters
+    n_predictions:      int     # closed quarters available to see
+
+class ReliabilityResponse(BaseModel):
+    rankings: list[ReliabilityRecord]

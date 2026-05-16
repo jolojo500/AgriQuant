@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg-primary:    #05080F;
+  --bg-card:       #0C1222;
+  --border:        #162035;
+  --border-bright: #1E2E48;
+  --text-primary:  #DDE6F5;
+  --text-secondary:#607090;
+  --green:         #00FF88;
+  --green-glow:    rgba(0, 255, 136, 0.12);
+  --cyan:          #00CFFF;
+  --red:           #FF3D5A;
+  --amber:         #FFAA33;
+  --font-mono:     'Space Mono', monospace;
+  --font-display:  'Syne', sans-serif;
+  --navbar-h:      56px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  margin: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar       { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+::selection { background: var(--green); color: var(--bg-primary); }

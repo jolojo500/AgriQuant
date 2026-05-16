@@ -87,6 +87,46 @@ def run_quarterly_pipeline() -> None:
         log.error(f"[QUARTERLY] Failed: {e}")
         raise
 
+def run_halal_check() -> None:
+    """
+    Weekly, re-checks Shariah compliance for all candidates.
+    If the universe changed, re-runs the quarterly pipeline so
+    the model no longer trains on non-compliant stocks.
+    raw_prices is kept (historical data stays valid).
+    """
+    import json
+    from pathlib import Path
+    from etl.extract_halal_universe import build_halal_universe
+    from db.queries import delete_ml_features_for_ticker
+
+    log.info("[HALAL] Checking Shariah compliance...")
+
+    universe_path = Path("halal_universe.json")
+    with open(universe_path) as f:
+        old_compliant = {s["ticker"] for s in json.load(f)["compliant"]}
+
+    build_halal_universe()  # overwrites halal_universe.json
+
+    with open(universe_path) as f:
+        new_compliant = {s["ticker"] for s in json.load(f)["compliant"]}
+
+    removed = old_compliant - new_compliant
+    added   = new_compliant - old_compliant
+
+    if not removed and not added:
+        log.info("[HALAL] Universe unchanged")
+        return
+
+    if removed:
+        log.info(f"[HALAL] Removed (non-compliant): {removed}")
+        for ticker in removed:
+            delete_ml_features_for_ticker(ticker)
+
+    if added:
+        log.info(f"[HALAL] Added (newly compliant): {added}")
+
+    log.info("[HALAL] Universe changed — triggering quarterly pipeline...")
+    run_quarterly_pipeline()
 
 if __name__ == "__main__":
     scheduler = BlockingScheduler(timezone="UTC")
@@ -101,6 +141,12 @@ if __name__ == "__main__":
         run_quarterly_pipeline,
         CronTrigger(month="1,4,7,10", day="1", hour="3", minute=0),  # 3AM after daily finishes
         id="quarterly_pipeline",
+    )
+
+    scheduler.add_job(
+    run_halal_check,
+    CronTrigger(day_of_week="sun", hour=1, minute=0),  # Every Sunday 1AM UTC
+    id="halal_check",
     )
 
     log.info("Scheduler started")

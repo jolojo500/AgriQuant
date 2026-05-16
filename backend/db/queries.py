@@ -222,3 +222,8 @@ def fill_actual_returns() -> None:
         filled += 1
 
     print(f"  fill_actual_returns: {filled} ticker/quarter pairs updated")
+
+def delete_ml_features_for_ticker(ticker: str) -> None:
+    """Removes all ml_features rows for a delisted/non-compliant ticker."""
+    supabase.table("ml_features").delete().eq("ticker", ticker).execute()
+    print(f"  Deleted ml_features for {ticker}")

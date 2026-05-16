@@ -140,6 +140,72 @@ def print_feature_importance(model, X: pd.DataFrame, model_name: str) -> dict:
     return {col: round(float(score), 6) for col, score in ranked}
 
 
+def run_training() -> None: # this is basically __main__ fro external use
+    from db.queries import read_ml_features, save_training_run
+    print("Loading data from Supabase...")
+    df = read_ml_features()
+
+    print(f"Dataset shape: {df.shape}")
+    print(f"Tickers: {df['ticker'].unique().tolist()}")
+
+    X, y = prepare_data(df)
+    quarters_col = df.loc[y.index, "quarter"]
+
+    print(f"After prep: {X.shape[0]} rows, {X.shape[1]} features\n")
+
+    # Define the 3 candidates
+    models = {
+        "OLS":           LinearRegression(),
+        "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42), # 100 trees more = stability but slower, random state is just a random seed with 42 being convention
+        "XGBoost":       XGBRegressor(n_estimators=100, random_state=42, verbosity=0), # 100 boosted trees etc, no terminal logs
+    }
+
+    # Walk-forward validation for each model
+    print("Walk-forward validation:")
+    print("-" * 50)
+    results = {}
+    for name, model in models.items():
+        rmse = walk_forward_cv(X, y, quarters_col, model, name)
+        results[name] = (rmse, model)
+
+    # Pick the best model (lowest RMSE)
+    best_name = min(results, key=lambda k: results[k][0])
+    best_rmse, best_model = results[best_name]
+    print(f"\nBest model: {best_name} (RMSE: {best_rmse:.4f}%)")
+
+    # Train final model on full dataset and save
+    print(f"\nTraining final {best_name} on full dataset...")
+    final_model = train_final_model(X, y, best_model)
+
+    joblib.dump({
+        "model":        final_model,
+        "model_name":   best_name,
+        "feature_cols": X.columns.tolist(),  # saved so predict.py uses exact same columns
+    }, MODEL_PATH)
+    print(f"Saved to {MODEL_PATH}")
+
+    baseline_rmse = float(y.std())
+    print(f"  Baseline (predict 0%)  → RMSE: {baseline_rmse:.4f}%")
+
+    # Feature importance — the quant-readable part
+    feature_importance_dict = print_feature_importance(final_model, X, best_name)
+    save_training_run(
+        best_model          = best_name,
+        rmse_ols            = results["OLS"][0],
+        rmse_rf             = results["Random Forest"][0],
+        rmse_xgb            = results["XGBoost"][0],
+        best_rmse           = best_rmse,
+        n_features          = X.shape[1],
+        n_rows              = X.shape[0],
+        start_year          = START_YEAR,
+        train_quarters      = MIN_TRAIN_QUARTERS,
+        feature_importance  = feature_importance_dict,
+        baseline_rmse       = baseline_rmse,
+    )
+
+
+#TODO add directionnal accuracy logging and more complexe baselines to compare to (momentum, sector average)
+
 if __name__ == "__main__":
     print("Loading data from Supabase...")
     df = read_ml_features()

@@ -328,6 +328,79 @@ def build_ml_dataset(
 
     return df_ml
 
+def weather_db_to_df(region: dict) -> pd.DataFrame:
+    """
+    Reads weather data from Supabase for one region.
+    Used by the quarterly schedule pipeline.
+    """
+    from db.queries import read_raw_weather_df
+    df = read_raw_weather_df(region["name"])
+
+   
+    return df
+
+
+def build_weather_features_from_db() -> pd.DataFrame:
+    """
+    Same as build_weather_features() but reads from Supabase.
+    No API calls so no rate limiting.
+    """
+    all_regions = []
+
+    for region in WEATHER_REGIONS:
+        print(f"  Reading weather for {region['name']} from DB...")
+        df_daily    = weather_db_to_df(region)
+        df_quarterly = aggregate_weather_quarterly(df_daily, region["name"])
+        all_regions.append(df_quarterly)
+
+    df_combined = pd.concat(all_regions, axis=1)
+    df_combined = df_combined.loc[:, ~df_combined.columns.duplicated()]
+    df_combined = df_combined[
+        (df_combined.index.year >= START_YEAR) &
+        (df_combined.index.year <= END_YEAR)
+    ]
+    return df_combined
+
+
+def build_stock_features_from_db() -> pd.DataFrame:
+    """
+    Same as build_stock_features() but reads from Supabase.
+    """
+    from db.queries import read_raw_prices_df
+    import json
+    from pathlib import Path
+
+    universe_path = Path(__file__).parent.parent / "halal_universe.json"
+    with open(universe_path) as f:
+        universe = json.load(f)["compliant"]
+
+    all_stocks = []
+
+    for stock in universe:
+        ticker = stock["ticker"]
+        print(f"  Reading prices for {ticker} from DB...")
+
+        df = read_raw_prices_df(ticker)
+        if df.empty:
+            continue
+
+        prices      = df["close"].resample("QS").agg(price_start="first", price_end="last")
+        volume_avg  = df["volume"].resample("QS").mean().rename("volume_avg")
+        stock_return = (
+            (prices["price_end"] - prices["price_start"])
+            / prices["price_start"] * 100
+        ).round(4).rename("stock_return")
+        stock_return_next_q = stock_return.shift(-1).rename("stock_return_next_q")
+
+        quarterly = pd.concat([prices, volume_avg, stock_return, stock_return_next_q], axis=1)
+        quarterly["ticker"] = ticker
+        all_stocks.append(quarterly)
+
+    df_all = pd.concat(all_stocks)
+    return df_all[
+        (df_all.index.year >= START_YEAR) &
+        (df_all.index.year <= END_YEAR)
+    ]
 
 if __name__ == "__main__":
     print("Step 1: Building weather features...")

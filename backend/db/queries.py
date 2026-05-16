@@ -142,3 +142,83 @@ def read_weather_latest_by_region(region: str, days: int = 90) -> list[dict]:
         .execute()
     )
     return response.data
+
+
+def read_raw_weather_df(region: str) -> pd.DataFrame:
+    """Reads all weather data for one region from Supabase."""
+    response = (
+        supabase.table("raw_weather")
+        .select("*")
+        .eq("region", region)
+        .order("date")
+        .execute()
+    )
+    df = pd.DataFrame(response.data)
+    if df.empty:
+        return df
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    return df
+
+
+def read_raw_prices_df(ticker: str) -> pd.DataFrame:
+    """Reads all price data for one ticker from Supabase."""
+    response = (
+        supabase.table("raw_prices")
+        .select("*")
+        .eq("ticker", ticker)
+        .order("date")
+        .execute()
+    )
+    df = pd.DataFrame(response.data)
+    if df.empty:
+        return df
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    return df
+
+def fill_actual_returns() -> None:
+    """
+    After each quarterly pipeline, fills actual_return in ml_predictions
+    for quarters that have now closed.
+    Reads actual returns from ml_features (target column).
+    """
+    # Get all predictions still missing actual_return
+    response = (
+        supabase.table("ml_predictions")
+        .select("ticker, quarter")
+        .is_("actual_return", "null")
+        .execute()
+    )
+
+    if not response.data:
+        print("  No predictions missing actual_return")
+        return
+
+    # Deduplicate ticker/quarter pairs
+    pairs = {(r["ticker"], r["quarter"]) for r in response.data}
+
+    filled = 0
+    for ticker, quarter in pairs:
+        # Look up actual return from ml_features (target column)
+        result = (
+            supabase.table("ml_features")
+            .select("target")
+            .eq("ticker", ticker)
+            .eq("quarter", quarter)
+            .execute()
+        )
+
+        if not result.data or result.data[0]["target"] is None:
+            continue  # Quarter not closed yet or no data
+
+        actual = result.data[0]["target"]
+
+        # Update all predictions for this ticker/quarter
+        supabase.table("ml_predictions").update(
+            {"actual_return": round(float(actual), 6)}
+        ).eq("ticker", ticker).eq("quarter", quarter).is_("actual_return", "null").execute()
+
+        filled += 1
+
+    print(f"  fill_actual_returns: {filled} ticker/quarter pairs updated")

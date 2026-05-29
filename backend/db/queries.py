@@ -128,6 +128,25 @@ def save_training_run(
     }).execute()    
     print("  Training run logged to Supabase")
 
+def read_latest_training_run() -> dict | None:
+    response = (
+        supabase.table("ml_training_runs")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+def read_training_history() -> list[dict]:
+    response = (
+        supabase.table("ml_training_runs")
+        .select("id, best_model, rmse_ols, rmse_rf, rmse_xgb, best_rmse, baseline_rmse, n_features, n_rows, start_year, train_quarters, created_at")
+        .order("created_at")
+        .execute()
+    )
+    return response.data
+
 def read_weather_latest_by_region(region: str, days: int = 90) -> list[dict]:
     """
     Returns the most recent N days of weather data for one region.

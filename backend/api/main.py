@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import health, tickers, prices, weather, predictions
+from api.routes import health, tickers, prices, weather, predictions, model
 
 app = FastAPI(title="AgriQuant API")
 
@@ -18,3 +18,4 @@ app.include_router(tickers.router)
 app.include_router(prices.router)
 app.include_router(weather.router)
 app.include_router(predictions.router)
+app.include_router(model.router)

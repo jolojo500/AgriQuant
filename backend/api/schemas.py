@@ -63,3 +63,35 @@ class ReliabilityRecord(BaseModel):
 
 class ReliabilityResponse(BaseModel):
     rankings: list[ReliabilityRecord]
+
+class TrainingRun(BaseModel):
+    id:                 int
+    best_model:         str
+    rmse_ols:           float
+    rmse_rf:            float
+    rmse_xgb:           float
+    best_rmse:          float
+    baseline_rmse:      float
+    n_features:         int
+    n_rows:             int
+    start_year:         int
+    train_quarters:     int
+    feature_importance: dict[str, float] | None
+    created_at:         str
+
+class TrainingRunSummary(BaseModel):
+    id:             int
+    best_model:     str
+    rmse_ols:       float
+    rmse_rf:        float
+    rmse_xgb:       float
+    best_rmse:      float
+    baseline_rmse:  float
+    n_features:     int
+    n_rows:         int
+    start_year:     int
+    train_quarters: int
+    created_at:     str
+
+class TrainingHistoryResponse(BaseModel):
+    runs: list[TrainingRunSummary]

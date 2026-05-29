@@ -67,3 +67,23 @@ export interface ReliabilityRecord {
 export interface ReliabilityResponse {
   rankings: ReliabilityRecord[]
 }
+
+export interface TrainingRun {
+  id:               number
+  best_model:       string
+  rmse_ols:         number
+  rmse_rf:          number
+  rmse_xgb:         number
+  best_rmse:        number
+  baseline_rmse:    number
+  n_features:       number
+  n_rows:           number
+  start_year:       number
+  train_quarters:   number
+  feature_importance: Record<string, number> | null  // only in /model/latest as to not have crazy delay
+  created_at:       string
+}
+
+export interface TrainingHistoryResponse {
+  runs: Omit<TrainingRun, 'feature_importance'>[]
+}

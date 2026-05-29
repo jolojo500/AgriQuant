@@ -5,6 +5,8 @@ import type {
   RankingsResponse,
   ReliabilityResponse,
   PredictionHistoryResponse,
+  TrainingRun,
+  TrainingHistoryResponse,
 } from '../types'
 
 // VITE_API_URL should be in .env.local    
@@ -24,4 +26,6 @@ export const api = {
   getRankings:    ()               => get<RankingsResponse>('/rankings'),
   getReliability: ()               => get<ReliabilityResponse>('/reliability'),
   getPredictions: (ticker: string) => get<PredictionHistoryResponse>(`/predictions/${ticker}`),
+  getLatestModel:   () => get<TrainingRun>('/model/latest'),
+  getModelHistory:  () => get<TrainingHistoryResponse>('/model/history'),
 }

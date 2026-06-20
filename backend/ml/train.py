@@ -5,6 +5,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
 from etl.transform_config import START_YEAR
 from db.queries import read_ml_features, save_training_run
 
@@ -223,6 +224,7 @@ if __name__ == "__main__":
         "OLS":           LinearRegression(),
         "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42), # 100 trees more = stability but slower, random state is just a random seed with 42 being convention
         "XGBoost":       XGBRegressor(n_estimators=100, random_state=42, verbosity=0), # 100 boosted trees etc, no terminal logs
+        "LightGBM":      LGBMRegressor(n_estimators=100, random_state=42, verbose=-1), #saw it from linkedin post looked sick
     }
 
     # Walk-forward validation for each model
@@ -259,6 +261,7 @@ if __name__ == "__main__":
         rmse_ols            = results["OLS"][0],
         rmse_rf             = results["Random Forest"][0],
         rmse_xgb            = results["XGBoost"][0],
+        rmse_lgbm           = results["LightGBM"][0],
         best_rmse           = best_rmse,
         n_features          = X.shape[1],
         n_rows              = X.shape[0],

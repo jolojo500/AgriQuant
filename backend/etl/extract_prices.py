@@ -1,8 +1,9 @@
 import yfinance as yf
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 import json
+from etl.transform_config import START_YEAR
 
 
 def load_halal_universe() -> list[dict]:
@@ -25,11 +26,12 @@ class PriceResponse(BaseModel):
     records: list[PriceRecord]
 
 
-def fetch_prices(ticker: str) -> PriceResponse:
+def fetch_prices(ticker: str, start: str = f"{START_YEAR}-01-01", end: str | None = None) -> PriceResponse:
+    end = end or str(date.today() + timedelta(days=1))
     raw = yf.download(
         ticker,
-        start="2015-01-01",
-        end="2025-12-31",
+        start=start,
+        end=end,
         auto_adjust=True, #auto split
         progress=False,   #progress bar
         multi_level_index=False,  #dont need the complicated stuff  

@@ -91,5 +91,6 @@ LAG_FEATURES = [
 TARGET = "stock_return_next_q"
 
 # --- Date range ---
+from datetime import date
 START_YEAR = 2015 #2019
-END_YEAR   = 2025
+END_YEAR   = date.today().year

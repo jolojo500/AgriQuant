@@ -78,6 +78,25 @@ def _next_quarter(quarter: str) -> str:
         return f"{year + 1}Q1"
     return f"{year}Q{q + 1}"
 
+def predict_all_tickers(quarter: str) -> None:
+    """
+    Runs predict_next_quarter for every ticker in the halal universe.
+    Used by the quarterly pipeline, and reusable for manual seeding/backfilling.
+    """
+    import json
+    from pathlib import Path
+
+    universe_path = Path("halal_universe.json")
+    with open(universe_path) as f:
+        universe = json.load(f)["compliant"]
+
+    for stock in universe:
+        ticker = stock["ticker"]
+        try:
+            result = predict_next_quarter(ticker, quarter)
+            print(f"  {ticker}: {result['predicted_return']}% for {result['predicted_quarter']}")
+        except Exception as e:
+            print(f"  {ticker} failed: {e}")
 
 if __name__ == "__main__":
     ticker  = input("Ticker  : ").upper()

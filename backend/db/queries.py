@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from datetime import date
 
 load_dotenv()
 
@@ -21,30 +22,24 @@ def read_ml_features(
     a DataFrame identical to the one built by transform.py.
     Each row = one (ticker, quarter) pair.
     """
-    query = supabase.table("ml_features").select("*")
-
+    filters = {}
     if ticker:
-        query = query.eq("ticker", ticker)
+        filters["ticker"] = ticker
     if quarter:
-        query = query.eq("quarter", quarter)
-        
-    response = query.order("quarter").execute()
-    rows = response.data
+        filters["quarter"] = quarter
 
-    records = []
-    for row in rows:
-        # features is a jsonb dict so we unpack all feature columns flat
-        record = {
-            "ticker":               row["ticker"],
-            "quarter":              row["quarter"],
-            "stock_return_next_q":  row["target"],
-            **json.loads(row["features"]),  # unpacks all 200+ feature columns
+    rows = _paginated_select("ml_features", filters, order_col="quarter")
+
+    records = [
+        {
+            "ticker":              row["ticker"],
+            "quarter":             row["quarter"],
+            "stock_return_next_q": row["target"],
+            **json.loads(row["features"]), #unpacking the 200+ features
         }
-        records.append(record)
-
-    df = pd.DataFrame(records)
-    #df = df.sort_values(["ticker", "quarter"]).reset_index(drop=True)
-    return df
+        for row in rows
+    ]
+    return pd.DataFrame(records)
 
 
 def read_raw_prices(ticker: str | None = None) -> pd.DataFrame:
@@ -52,15 +47,11 @@ def read_raw_prices(ticker: str | None = None) -> pd.DataFrame:
     Loads daily price records from raw_prices.
     If ticker is provided, filters to that ticker only.
     """
-    query = supabase.table("raw_prices").select("*")
-
-    if ticker:
-        query = query.eq("ticker", ticker)
-
-    response = query.order("date").execute()
-
-    df = pd.DataFrame(response.data)
-    df["date"] = pd.to_datetime(df["date"])
+    filters = {"ticker": ticker} if ticker else {}
+    rows = _paginated_select("raw_prices", filters, order_col="date")
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df["date"] = pd.to_datetime(df["date"])
     return df
 
 
@@ -91,19 +82,17 @@ def read_predictions(ticker: str | None = None) -> pd.DataFrame:
     Loads prediction history from ml_predictions.
     Used by the API and for backtesting evaluation.
     """
-    query = supabase.table("ml_predictions").select("*")
-
-    if ticker:
-        query = query.eq("ticker", ticker)
-
-    response = query.order("created_at").execute()
-    return pd.DataFrame(response.data)
+    filters = {"ticker": ticker} if ticker else {}
+    rows = _paginated_select("ml_predictions", filters, order_col="created_at")
+    
+    return pd.DataFrame(rows)
 
 def save_training_run(
     best_model:        str,
     rmse_ols:          float,
     rmse_rf:           float,
     rmse_xgb:          float,
+    rmse_lgbm:         float,
     best_rmse:         float,
     n_features:        int,
     n_rows:            int,
@@ -118,6 +107,7 @@ def save_training_run(
         "rmse_ols":            round(rmse_ols,  4),
         "rmse_rf":             round(rmse_rf,   4),
         "rmse_xgb":            round(rmse_xgb,  4),
+        "rmse_lgbm":           round(rmse_lgbm, 4),
         "best_rmse":           round(best_rmse, 4),
         "n_features":          n_features,
         "n_rows":              n_rows,
@@ -139,13 +129,18 @@ def read_latest_training_run() -> dict | None:
     return response.data[0] if response.data else None
 
 def read_training_history() -> list[dict]:
-    response = (
-        supabase.table("ml_training_runs")
-        .select("id, best_model, rmse_ols, rmse_rf, rmse_xgb, best_rmse, baseline_rmse, n_features, n_rows, start_year, train_quarters, created_at")
-        .order("created_at")
-        .execute()
+   # response = (
+    #    supabase.table("ml_training_runs")
+    #    .select("id, best_model, rmse_ols, rmse_rf, rmse_xgb, best_rmse, baseline_rmse, n_features, n_rows, start_year, train_quarters, created_at")
+    #    .order("created_at")
+    #    .execute()
+    #)
+    #return response.data
+    columns = (
+        "id, best_model, rmse_ols, rmse_rf, rmse_xgb, best_rmse, "
+        "baseline_rmse, n_features, n_rows, start_year, train_quarters, created_at"
     )
-    return response.data
+    return _paginated_select("ml_training_runs", order_col="created_at", columns=columns)
 
 def read_weather_latest_by_region(region: str, days: int = 90) -> list[dict]:
     """
@@ -164,37 +159,23 @@ def read_weather_latest_by_region(region: str, days: int = 90) -> list[dict]:
 
 
 def read_raw_weather_df(region: str) -> pd.DataFrame:
-    """Reads all weather data for one region from Supabase."""
-    response = (
-        supabase.table("raw_weather")
-        .select("*")
-        .eq("region", region)
-        .order("date")
-        .execute()
-    )
-    df = pd.DataFrame(response.data)
+    """Reads ALL weather data for one region, paginated past Supabase's 1000-row default cap."""
+    rows = _paginated_select("raw_weather", {"region": region}, order_col="date")
+    df = pd.DataFrame(rows)
     if df.empty:
         return df
     df["date"] = pd.to_datetime(df["date"])
-    df = df.set_index("date")
-    return df
+    return df.set_index("date")
 
 
 def read_raw_prices_df(ticker: str) -> pd.DataFrame:
-    """Reads all price data for one ticker from Supabase."""
-    response = (
-        supabase.table("raw_prices")
-        .select("*")
-        .eq("ticker", ticker)
-        .order("date")
-        .execute()
-    )
-    df = pd.DataFrame(response.data)
+    """Reads ALL price data for one ticker, paginated past Supabase's 1000-row default cap."""
+    rows = _paginated_select("raw_prices", {"ticker": ticker}, order_col="date")
+    df = pd.DataFrame(rows)
     if df.empty:
         return df
     df["date"] = pd.to_datetime(df["date"])
-    df = df.set_index("date")
-    return df
+    return df.set_index("date")
 
 def fill_actual_returns() -> None:
     """
@@ -246,3 +227,87 @@ def delete_ml_features_for_ticker(ticker: str) -> None:
     """Removes all ml_features rows for a delisted/non-compliant ticker."""
     supabase.table("ml_features").delete().eq("ticker", ticker).execute()
     print(f"  Deleted ml_features for {ticker}")
+
+
+def read_last_price_date(ticker: str) -> date | None:
+    """Returns the most recent date we have prices for, or None if never fetched."""
+    response = (
+        supabase.table("raw_prices")
+        .select("date")
+        .eq("ticker", ticker)
+        .order("date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return date.fromisoformat(response.data[0]["date"]) if response.data else None
+
+
+def read_last_weather_date(region: str) -> date | None:
+    """Returns the most recent date we have weather for, or None if never fetched."""
+    response = (
+        supabase.table("raw_weather")
+        .select("date")
+        .eq("region", region)
+        .order("date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return date.fromisoformat(response.data[0]["date"]) if response.data else None
+
+def download_model(local_path: str = "ml/model.pkl") -> bool:
+    """Downloads model.pkl from Supabase Storage if not present locally."""
+    from pathlib import Path
+    if Path(local_path).exists():
+        return True
+    try:
+        res = supabase.storage.from_("models").download("model.pkl")
+        Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(local_path, "wb") as f:
+            f.write(res)
+        print("  model.pkl downloaded from Supabase Storage")
+        return True
+    except Exception as e:
+        print(f"  model.pkl not found in Storage: {e}")
+        return False
+
+def upload_model(local_path: str = "ml/model.pkl") -> None:
+    """Uploads model.pkl to Supabase Storage after retraining."""
+    with open(local_path, "rb") as f:
+        supabase.storage.from_("models").upload(
+            "model.pkl", f, {"upsert": "true"}
+        )
+    print("  model.pkl uploaded to Supabase Storage")
+
+    
+def _paginated_select(
+    table: str,
+    filters: dict | None = None,
+    order_col: str = "date",
+    desc: bool = False,
+    columns: str = "*",
+) -> list[dict]:
+    """
+    Generic paginated select — works around Supabase's 1000-row default cap.
+    Loops with .range() until a page comes back shorter than page_size.
+    """
+    all_rows = []
+    page_size = 1000
+    start = 0
+
+    while True:
+        query = supabase.table(table).select(columns)
+        if filters:
+            for col, val in filters.items():
+                query = query.eq(col, val)
+        query = query.order(order_col, desc=desc).range(start, start + page_size - 1)
+
+        response = query.execute()
+        rows = response.data
+        if not rows:
+            break
+        all_rows.extend(rows)
+        if len(rows) < page_size:
+            break
+        start += page_size
+
+    return all_rows

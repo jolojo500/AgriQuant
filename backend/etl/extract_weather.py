@@ -1,5 +1,6 @@
 import requests
 from pydantic import BaseModel
+from etl.transform_config import START_YEAR
 from datetime import date
 
 
@@ -36,14 +37,15 @@ class NasaResponse(BaseModel):
 
 
 
-def fetch_raw_weather(lat: float, lon: float) -> dict:
+def fetch_raw_weather(lat: float, lon: float, start_date: str = f"{START_YEAR}-01-01", end_date: str | None = None) -> dict:
+    end_date = end_date or str(date.today())
     url = "https://archive-api.open-meteo.com/v1/archive"
 
     params = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": "2015-01-01",
-        "end_date": "2025-12-31",
+        "start_date": start_date,
+        "end_date": end_date,
         "daily": [
             "precipitation_sum",
             "temperature_2m_max",
@@ -84,7 +86,8 @@ def parse_weather(raw: dict, region: str) -> WeatherResponse:
     )
 
 
-def fetch_raw_nasa(lat: float, lon: float) -> dict:
+def fetch_raw_nasa(lat: float, lon: float, start: str = f"{START_YEAR}0101", end: str | None = None) -> dict:
+    end = end or date.today().strftime("%Y%m%d")
     url="https://power.larc.nasa.gov/api/temporal/daily/point" #could do area but annoying
     params = {
         "parameters": "ALLSKY_SFC_SW_DWN,RH2M,WS2M",
@@ -92,8 +95,8 @@ def fetch_raw_nasa(lat: float, lon: float) -> dict:
         "community": "AG",          # Agriculture profile, optimised for crops
         "longitude": lon,
         "latitude": lat,
-        "start": "20150101",        # NASA wants YYYYMMDD format with no dashes (-)
-        "end": "20251231",
+        "start": start,        # NASA wants YYYYMMDD format with no dashes (-)
+        "end": end,
         "format": "JSON",
     }
     response = requests.get(url, params=params)

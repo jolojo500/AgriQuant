@@ -70,8 +70,9 @@ class TrainingRun(BaseModel):
     rmse_ols:           float
     rmse_rf:            float
     rmse_xgb:           float
+    rmse_lgbm:      float | None = None
     best_rmse:          float
-    baseline_rmse:      float
+    baseline_rmse:      float | None = None
     n_features:         int
     n_rows:             int
     start_year:         int
@@ -85,8 +86,9 @@ class TrainingRunSummary(BaseModel):
     rmse_ols:       float
     rmse_rf:        float
     rmse_xgb:       float
+    rmse_lgbm:      float | None = None
     best_rmse:      float
-    baseline_rmse:  float
+    baseline_rmse:  float | None = None
     n_features:     int
     n_rows:         int
     start_year:     int

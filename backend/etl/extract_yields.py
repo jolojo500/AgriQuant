@@ -4,6 +4,7 @@ import io
 import pandas as pd
 from pydantic import BaseModel
 from pathlib import Path
+from etl.transform_config import START_YEAR, END_YEAR
 
 # Bulk download URL — public, no auth required
 FAOSTAT_BULK_URL = (
@@ -92,7 +93,7 @@ def parse_yields(df: pd.DataFrame, crop: str, country: str) -> YieldResponse:
     filtered = df[
         (df["Item"] == crop_name) &
         (df["Area"] == country_name) &
-        (df["Year"].between(2015, 2025))
+        (df["Year"].between(START_YEAR, END_YEAR))
     ].copy()
 
     if filtered.empty:

@@ -66,3 +66,11 @@ app.include_router(prices.router)
 app.include_router(weather.router)
 app.include_router(predictions.router)
 app.include_router(model.router)
+
+@app.get("/")
+def root():
+    return {
+        "name": "AgriQuant API",
+        "status": "live",
+        "docs": "/docs",
+    }

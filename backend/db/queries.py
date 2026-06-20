@@ -68,13 +68,13 @@ def save_prediction(
     actual_return is None at prediction time 
     it gets filled in later once the quarter closes.
     """
-    supabase.table("ml_predictions").insert({
+    supabase.table("ml_predictions").upsert({
         "ticker":           ticker,
         "quarter":          quarter,
         "predicted_return": round(predicted_return, 6),
         "actual_return":    actual_return,
         "model_version":    model_version,
-    }).execute()
+    }, on_conflict="ticker,quarter").execute()
 
 
 def read_predictions(ticker: str | None = None) -> pd.DataFrame:

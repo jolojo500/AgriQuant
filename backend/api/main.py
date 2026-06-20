@@ -49,7 +49,12 @@ async def lifespan(app: FastAPI):
 
 
 
-app = FastAPI(title="AgriQuant API", lifespan=lifespan)
+app = FastAPI(
+    title="AgriQuant API",
+    description="ML pipeline forecasting quarterly returns for halal-screened agricultural equities.",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # Allows requests from the React frontend
 # TODO in production, replace * with Firebase domain

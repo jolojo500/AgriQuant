@@ -1,8 +1,8 @@
 import json
 
 from fastapi import APIRouter, HTTPException
-from api.schemas import TrainingHistoryResponse, TrainingRun, TrainingRunSummary
-from db.queries import read_latest_training_run, read_training_history
+from api.schemas import ModelAccuracyResponse, TrainingHistoryResponse, TrainingRun, TrainingRunSummary
+from db.queries import read_latest_training_run, read_training_history,read_overall_direction_accuracy
 
 router = APIRouter()
 
@@ -23,3 +23,9 @@ def get_model_history():
     return TrainingHistoryResponse(
         runs=[TrainingRunSummary(**r) for r in runs]
     )
+
+
+
+@router.get("/model/accuracy", response_model=ModelAccuracyResponse)
+def get_model_accuracy():
+    return ModelAccuracyResponse(**read_overall_direction_accuracy())

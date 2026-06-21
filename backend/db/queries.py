@@ -311,3 +311,54 @@ def _paginated_select(
         start += page_size
 
     return all_rows
+
+def backfill_predictions(df: pd.DataFrame, model_version: str, min_quarter: str = "2024Q1") -> None:
+    """
+    Backfills ml_predictions with genuine out-of-sample walk-forward
+    predictions. These are legitimate, never leaked future data.
+    Only backfills quarter >= min_quarter to keep the track record recent.
+    """
+    if df.empty:
+        return
+
+    df = df[df["quarter"] >= min_quarter]
+    if df.empty:
+        print(f"  No fold predictions at or after {min_quarter}")
+        return
+
+    rows = [
+        {
+            "ticker":           row["ticker"],
+            "quarter":          row["quarter"],
+            "predicted_return": round(float(row["predicted_return"]), 6),
+            "actual_return":    round(float(row["actual_return"]), 6),
+            "model_version":    model_version,
+        }
+        for _, row in df.iterrows()
+    ]
+
+    supabase.table("ml_predictions").upsert(rows, on_conflict="ticker,quarter").execute()
+    print(f"  backfill_predictions: {len(rows)} rows upserted (quarter >= {min_quarter})")
+
+def read_overall_direction_accuracy() -> dict: #it barely makes sense since accuracy varies from ticker to ticker but it is a stat so
+    """
+    Pooled direction accuracy across all tickers/quarters with a closed
+    actual_return, far more statistically reliable than per-ticker
+    numbers, which suffer from tiny sample sizes (n~17 each).
+    """
+    rows = _paginated_select("ml_predictions", order_col="created_at")
+    df = pd.DataFrame(rows)
+    df = df.dropna(subset=["actual_return"])
+
+    if df.empty:
+        return {"direction_accuracy": None, "n_predictions": 0}
+
+    correct = (
+        df["predicted_return"].astype(float).apply(lambda x: 1 if x >= 0 else -1) ==
+        df["actual_return"].astype(float).apply(lambda x: 1 if x >= 0 else -1)
+    )
+
+    return {
+        "direction_accuracy": round(float(correct.mean()), 4),
+        "n_predictions": int(len(df)),
+    }

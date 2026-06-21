@@ -52,13 +52,16 @@ def walk_forward_cv(
     X: pd.DataFrame,
     y: pd.Series,
     quarters_col: pd.Series,
+    tickers_col: pd.Series,
     model,
     model_name: str,
-) -> float:
+) -> tuple[float, pd.DataFrame]:
     """
     Walk-forward cross-validation on quarterly data.
     Trains on all past quarters, predicts one quarter at a time.
-    Returns RMSE averaged across all test quarters.
+    Returns (avg_rmse, predictions_df). predictions_df contains genuine
+    out-of-sample predictions per (ticker, quarter) — safe to use as
+    a historical track record, since each fold only trains on the past.
 
     Example with 28 quarters, MIN_TRAIN_QUARTERS=12:
       Step 1: train on Q1-Q12, predict Q13
@@ -72,9 +75,10 @@ def walk_forward_cv(
 
     if len(unique_quarters) < MIN_TRAIN_QUARTERS + 1:
         print(f"  Not enough quarters for walk-forward ({len(unique_quarters)} available)")
-        return float("inf")
+        return float("inf"), pd.DataFrame()
 
     errors = []
+    fold_predictions = []
 
     for i in range(MIN_TRAIN_QUARTERS, len(unique_quarters)):
         train_quarters = unique_quarters[:i]     # all quarters before current
@@ -96,9 +100,18 @@ def walk_forward_cv(
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
         errors.append(rmse)
 
+        fold_predictions.append(pd.DataFrame({
+                "ticker":           tickers_col[test_mask].values,
+                "quarter":          test_quarter,
+                "predicted_return": y_pred,
+                "actual_return":    y_test.values,
+            })
+        )
+
     avg_rmse = float(np.mean(errors))
     print(f"  {model_name:20} - avg RMSE: {avg_rmse:.4f}% over {len(errors)} test quarters")
-    return avg_rmse
+    predictions_df = pd.concat(fold_predictions, ignore_index=True) if fold_predictions else pd.DataFrame()
+    return avg_rmse, predictions_df
 
 
 def train_final_model(X: pd.DataFrame, y: pd.Series, model) -> object:
@@ -151,6 +164,7 @@ def run_training() -> None: # this is basically __main__ fro external use
 
     X, y = prepare_data(df)
     quarters_col = df.loc[y.index, "quarter"]
+    tickers_col  = df.loc[y.index, "ticker"]
 
     print(f"After prep: {X.shape[0]} rows, {X.shape[1]} features\n")
 
@@ -159,15 +173,18 @@ def run_training() -> None: # this is basically __main__ fro external use
         "OLS":           LinearRegression(),
         "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42), # 100 trees more = stability but slower, random state is just a random seed with 42 being convention
         "XGBoost":       XGBRegressor(n_estimators=100, random_state=42, verbosity=0), # 100 boosted trees etc, no terminal logs
+        "LightGBM":      LGBMRegressor(n_estimators=100, random_state=42, verbose=-1), #saw it from linkedin post looked sick
     }
 
     # Walk-forward validation for each model
     print("Walk-forward validation:")
     print("-" * 50)
     results = {}
+    fold_preds = {}
     for name, model in models.items():
-        rmse = walk_forward_cv(X, y, quarters_col, model, name)
+        rmse, preds = walk_forward_cv(X, y, quarters_col, tickers_col, model, name)
         results[name] = (rmse, model)
+        fold_preds[name] = preds
 
     # Pick the best model (lowest RMSE)
     best_name = min(results, key=lambda k: results[k][0])
@@ -195,6 +212,7 @@ def run_training() -> None: # this is basically __main__ fro external use
         rmse_ols            = results["OLS"][0],
         rmse_rf             = results["Random Forest"][0],
         rmse_xgb            = results["XGBoost"][0],
+        rmse_lgbm           = results["LightGBM"][0],
         best_rmse           = best_rmse,
         n_features          = X.shape[1],
         n_rows              = X.shape[0],
@@ -203,6 +221,12 @@ def run_training() -> None: # this is basically __main__ fro external use
         feature_importance  = feature_importance_dict,
         baseline_rmse       = baseline_rmse,
     )
+
+    from db.queries import upload_model
+    upload_model()
+
+    from db.queries import backfill_predictions
+    backfill_predictions(fold_preds[best_name], model_version=best_name, min_quarter="2022Q1")
 
 
 #TODO add directionnal accuracy logging and more complexe baselines to compare to (momentum, sector average)

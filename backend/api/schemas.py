@@ -97,3 +97,7 @@ class TrainingRunSummary(BaseModel):
 
 class TrainingHistoryResponse(BaseModel):
     runs: list[TrainingRunSummary]
+
+class ModelAccuracyResponse(BaseModel):
+    direction_accuracy: float | None
+    n_predictions: int

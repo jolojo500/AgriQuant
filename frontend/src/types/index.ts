@@ -87,3 +87,8 @@ export interface TrainingRun {
 export interface TrainingHistoryResponse {
   runs: Omit<TrainingRun, 'feature_importance'>[]
 }
+
+export interface ModelAccuracyResponse {
+  direction_accuracy: number | null
+  n_predictions: number
+}

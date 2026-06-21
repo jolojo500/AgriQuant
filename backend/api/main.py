@@ -61,7 +61,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Firebase URL in production
-    allow_methods=["GET"],
+    allow_methods=["GET", "HEAD", "OPTIONS"],
     allow_headers=["*"],
 )
 

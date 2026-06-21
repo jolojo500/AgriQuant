@@ -72,7 +72,7 @@ app.include_router(weather.router)
 app.include_router(predictions.router)
 app.include_router(model.router)
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {
         "name": "AgriQuant API",

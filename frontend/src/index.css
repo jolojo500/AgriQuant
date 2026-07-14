@@ -4,6 +4,28 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+
+/* ── Design tokens ─ Tailwind generates bg-wtv /text-wtv /border-wtv /font-* from these.
+   Same values as :root below; both coexist during migration, old ones get deleted as we go. */
+@theme {
+  --color-canvas:      #05080F;   /* page background        (was --bg-primary)    */
+  --color-surface:     #0C1222;   /* cards / panels         (was --bg-card)       */
+  --color-line:        #162035;   /* borders                (was --border)        */
+  --color-line-strong: #1E2E48;   /* brighter borders       (was --border-bright) */
+  --color-ink:         #DDE6F5;   /* primary text           (was --text-primary)  */
+  --color-ink-muted:   #607090;   /* secondary text         (was --text-secondary)*/
+  --color-ink-faint:   #3A4A66;   /* faint text — NEW, replaces undefined --text-muted */
+  --color-accent:      #00FF88;   /* brand green            (was --green)         */
+  --color-accent-glow: rgba(0, 255, 136, 0.12);  /*          (was --green-glow)    */
+  --color-cyan:        #00CFFF;
+  --color-danger:      #FF3D5A;   /*                         (was --red)           */
+  --color-warn:        #FFAA33;   /*                         (was --amber)         */
+
+  --font-mono:    'Space Mono', monospace;   /* overrides Tailwind's default mono */
+  --font-display: 'Syne', sans-serif;
+}
+
+
 :root {
   --bg-primary:    #05080F;
   --bg-card:       #0C1222;
@@ -22,6 +44,16 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Border reset (normally from Tailwind's preflight, which we skip). Lets border/border-b
+   utilities render as solid. Safe: default borders are invisible, so nothing changes visually. */
+@layer base {
+  *, *::before, *::after {
+    border-width: 0;
+    border-style: solid;
+    border-color: currentColor;
+  }
+}
 
 body {
   background-color: var(--bg-primary);

@@ -1,5 +1,8 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+/* Tailwind v4 without preflight — adds utilities but no reset, so the look can't change */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 :root {
   --bg-primary:    #05080F;

@@ -34,35 +34,25 @@ export default function Stocks() {
   }, [])
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '3rem 2rem' }}>
+    <div className="mx-auto max-w-[900px] px-8 py-12">
 
       {/* Header */}
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--green)', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>
+      <p className="font-mono text-[0.7rem] text-accent tracking-[0.12em] mb-2">
         Halal agricultural equities
       </p>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.8rem', color: 'var(--text-primary)', margin: '0 0 2.5rem' }}>
+      <h2 className="font-display font-semibold text-[1.8rem] text-ink mt-0 mb-10">
         Stock Rankings
       </h2>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '2rem', borderBottom: '1px solid var(--border)' }}>
+      <div className="flex gap-0 mb-8 border-b border-line">
         {([['predicted', 'Predicted Return'], ['reliability', 'Model Reliability']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              padding: '0.75rem 1.5rem',
-              background: 'none',
-              border: 'none',
-              borderBottom: tab === key ? '2px solid var(--green)' : '2px solid transparent',
-              color: tab === key ? 'var(--text-primary)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              marginBottom: '-1px',
-              transition: 'color 0.2s',
-            }}
+            className={`font-display font-semibold text-[0.85rem] px-6 py-3 bg-transparent -mb-px cursor-pointer transition-colors duration-200 border-b-2 ${
+              tab === key ? 'text-ink border-accent' : 'text-ink-muted border-transparent'
+            }`}
           >
             {label}
           </button>
@@ -70,12 +60,12 @@ export default function Stocks() {
       </div>
 
       {/* Table */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+      <div className="border border-line rounded-lg overflow-hidden">
         {tab === 'predicted' ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr] px-6 py-3 border-b border-line">
               {['Ticker', 'Quarter', 'Predicted Return', 'Model'].map(h => (
-                <span key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                <span key={h} className="font-mono text-[0.65rem] text-ink tracking-[0.1em] uppercase">
                   {h}
                 </span>
               ))}
@@ -84,24 +74,22 @@ export default function Stocks() {
               <div
                 key={r.ticker}
                 onClick={() => navigate(`/stocks/${r.ticker}`)}
-                style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                className="grid grid-cols-[2fr_1fr_1fr_1fr] px-6 py-4 border-b border-line cursor-pointer transition-colors duration-150 hover:bg-surface"
               >
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{r.ticker}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{r.quarter}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: r.predicted_return >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                <span className="font-mono text-[0.9rem] text-ink">{r.ticker}</span>
+                <span className="font-mono text-[0.9rem] text-ink-muted">{r.quarter}</span>
+                <span className={`font-mono text-[0.9rem] ${r.predicted_return >= 0 ? 'text-accent' : 'text-danger'}`}>
                   {r.predicted_return >= 0 ? '+' : ''}{r.predicted_return.toFixed(2)}%
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.model_version}</span>
+                <span className="font-mono text-[0.75rem] text-ink">{r.model_version}</span>
               </div>
             ))}
           </>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+            <div className="grid grid-cols-[2fr_1fr_1fr] px-6 py-3 border-b border-line">
               {['Ticker', 'Direction Accuracy', 'Quarters Tracked'].map(h => (
-                <span key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                <span key={h} className="font-mono text-[0.65rem] text-ink tracking-[0.1em] uppercase">
                   {h}
                 </span>
               ))}
@@ -110,15 +98,13 @@ export default function Stocks() {
               <div
                 key={r.ticker}
                 onClick={() => navigate(`/stocks/${r.ticker}`)}
-                style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                className="grid grid-cols-[2fr_1fr_1fr] px-6 py-4 border-b border-line cursor-pointer transition-colors duration-150 hover:bg-surface"
               >
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{r.ticker}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: r.direction_accuracy >= 0.6 ? 'var(--green)' : r.direction_accuracy >= 0.5 ? 'var(--amber)' : 'var(--red)' }}>
+                <span className="font-mono text-[0.9rem] text-ink">{r.ticker}</span>
+                <span className={`font-mono text-[0.9rem] ${r.direction_accuracy >= 0.6 ? 'text-accent' : r.direction_accuracy >= 0.5 ? 'text-warn' : 'text-danger'}`}>
                   {(r.direction_accuracy * 100).toFixed(0)}%
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{r.n_predictions}Q</span>
+                <span className="font-mono text-[0.9rem] text-ink-muted">{r.n_predictions}Q</span>
               </div>
             ))}
           </>

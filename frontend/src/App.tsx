@@ -11,7 +11,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Navbar />
-      <main style={{ paddingTop: 'var(--navbar-h)' }}>
+      <main className="pt-14">
         <Routes>
           <Route path="/"              element={<Landing />} />
           <Route path="/globe"         element={<Globe />} />

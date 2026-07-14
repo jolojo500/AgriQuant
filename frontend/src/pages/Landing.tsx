@@ -34,11 +34,11 @@ export default function Landing() {
         api.getLatestModel()
             .then(data => setLatestModel(data.best_model))
             .catch(() => setLatestModel('Random Forest'))
-        
+
     }, [])
 
 
-    
+
     const stats = [
         { label: 'Halal stocks tracked', value: tickerCount || '—', mono: false },
         { label: 'Weather regions',      value: regionCount || '—', mono: false },
@@ -65,108 +65,42 @@ export default function Landing() {
     ]
 
     return (
-        <div style={{ minHeight: '100vh', padding: '4rem 2rem', maxWidth: '1100px', margin: '0 auto' }}>
+        <div className="min-h-screen px-8 py-16 max-w-[1100px] mx-auto">
 
         {/* Hero */}
-        <section style={{ marginBottom: '6rem' }}>
-            <p style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.7rem',
-                color: 'var(--green)',
-                letterSpacing: '0.12em',
-                marginBottom: '1.5rem',
-            }}>
+        <section className="mb-24">
+            <p className="font-mono text-[0.7rem] text-accent tracking-[0.12em] mb-6">
                 Agricultural quantitative analysis
             </p>
 
-            <h1 style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 600,
-                fontSize: 'clamp(1.8rem, 3.5vw, 3rem)',
-                lineHeight: 1.2,
-                color: 'var(--text-primary)',
-                margin: '0 0 1.25rem',
-            }}>
+            <h1 className="font-display font-semibold text-[clamp(1.8rem,3.5vw,3rem)] leading-[1.2] text-ink mt-0 mb-5">
                 Where weather moves markets.
             </h1>
 
-            <p style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 400,
-                fontSize: '0.95rem',
-                color: 'var(--text-secondary)', //#FFFFED this also kinda good ngl, might be better for eyes
-                maxWidth: '480px',
-                lineHeight: 1.75,
-                margin: '0 0 2.5rem',
-            }}>
+            <p className="font-display font-normal text-[0.95rem] text-ink-muted max-w-[480px] leading-[1.75] mt-0 mb-10">
                 AgriQuant cross-references satellite weather data, global crop yields,
                 and halal-screened agricultural equities to predict quarterly stock returns.
             </p>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-                <button onClick={() => navigate('/globe')} style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                padding: '0.65rem 1.5rem',
-                background: 'var(--green)',
-                color: 'var(--bg-primary)',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                }}>
+            <div className="flex gap-4">
+                <button onClick={() => navigate('/globe')} className="font-display font-semibold text-[0.85rem] px-6 py-[0.65rem] bg-accent text-canvas rounded cursor-pointer">
                 Explore Globe
                 </button>
-                <button onClick={() => navigate('/stocks')} style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                padding: '0.65rem 1.5rem',
-                background: 'transparent',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-bright)',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                }}>
+                <button onClick={() => navigate('/stocks')} className="font-display font-semibold text-[0.85rem] px-6 py-[0.65rem] bg-transparent text-ink border border-line-strong rounded cursor-pointer">
                 View Rankings
                 </button>
             </div>
         </section>
 
-        
+
         {/* Stat cards */}
-        <section style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '1px',
-        background: 'var(--border)',
-        border: '1px solid var(--border)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        marginBottom: '6rem',
-        }}>
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-px bg-line border border-line rounded-lg overflow-hidden mb-24">
         {stats.map(({ label, value, mono }) => (
-            <div key={label} style={{
-            background: 'var(--bg-card)',
-            padding: '1.75rem',
-            }}>
-            <p style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.65rem',
-                color: 'var(--text-secondary)',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                margin: '0 0 0.75rem',
-            }}>
+            <div key={label} className="bg-surface p-7">
+            <p className="font-mono text-[0.65rem] text-ink-muted tracking-[0.1em] uppercase mt-0 mb-3">
                 {label}
             </p>
-            <p style={{
-                fontFamily: mono ? 'var(--font-mono)' : 'var(--font-display)',
-                fontSize: '1.6rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                margin: 0,
-            }}>
+            <p className={`${mono ? 'font-mono' : 'font-display'} text-[1.6rem] font-bold text-ink m-0`}>
                 {value}
             </p>
             </div>
@@ -175,102 +109,47 @@ export default function Landing() {
 
 
         {/* How it works */}
-        <section style={{ marginBottom: '6rem' }}>
-        <p style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.7rem',
-            color: 'var(--green)',
-            letterSpacing: '0.12em',
-            marginBottom: '3rem',
-        }}>
+        <section className="mb-24">
+        <p className="font-mono text-[0.7rem] text-accent tracking-[0.12em] mb-12">
             How it works
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+        <div className="flex flex-col gap-0">
             {steps.map(({ number, title, description }) => (
-            <div key={number} style={{
-                display: 'grid',
-                gridTemplateColumns: '80px 1fr',
-                gap: '2rem',
-                padding: '2rem 0',
-                borderTop: '1px solid var(--border)',
-            }}>
-                <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-                paddingTop: '0.2rem',
-                }}>
+            <div key={number} className="grid grid-cols-[80px_1fr] gap-8 py-8 border-t border-line">
+                <span className="font-mono text-[0.75rem] text-ink pt-[0.2rem]">
                 {number}
                 </span>
                 <div>
-                <p style={{
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    color: 'var(--text-primary)',
-                    margin: '0 0 0.5rem',
-                }}>
+                <p className="font-display font-semibold text-base text-ink mt-0 mb-2">
                     {title}
                 </p>
-                <p style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.75,
-                    margin: 0,
-                    maxWidth: '560px',
-                }}>
+                <p className="font-display text-[0.9rem] text-ink-muted leading-[1.75] m-0 max-w-[560px]">
                     {description}
                 </p>
                 </div>
             </div>
             ))}
-            <div style={{ borderTop: '1px solid var(--border)' }} />
+            <div className="border-t border-line" />
         </div>
         </section>
 
         {/* Top stocks preview */}
-        <section style={{ marginBottom: '6rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.5rem' }}>
-            <p style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.7rem',
-            color: 'var(--green)',
-            letterSpacing: '0.12em',
-            margin: 0,
-            }}>
+        <section className="mb-24">
+        <div className="flex justify-between items-baseline mb-6">
+            <p className="font-mono text-[0.7rem] text-accent tracking-[0.12em] m-0">
             Top predictions this quarter
             </p>
-            <button onClick={() => navigate('/stocks')} style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.7rem',
-            color: 'var(--text-secondary)',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            letterSpacing: '0.08em',
-            }}>
+            <button onClick={() => navigate('/stocks')} className="font-mono text-[0.7rem] text-ink-muted bg-transparent cursor-pointer tracking-[0.08em]">
             View all →
             </button>
         </div>
 
-        <div style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+        <div className="border border-line rounded-lg overflow-hidden">
             {/* Header */}
-            <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            padding: '0.75rem 1.5rem',
-            borderBottom: '1px solid var(--border)',
-            }}>
+            <div className="grid grid-cols-3 px-6 py-3 border-b border-line">
             {['Ticker', 'Quarter', 'Predicted Return'].map(h => (
-                <span key={h} style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.65rem',
-                color: 'var(--text-muted)',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                }}>
+                <span key={h} className="font-mono text-[0.65rem] text-ink tracking-[0.1em] uppercase">
                 {h}
                 </span>
             ))}
@@ -278,38 +157,25 @@ export default function Landing() {
 
             {/* Rows */}
             {topStocks.length === 0
-            ? <div style={{ padding: '2rem 1.5rem' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            ? <div className="px-6 py-8">
+                <span className="font-mono text-[0.8rem] text-ink">
                     Loading...
                 </span>
                 </div>
-                      
+
             : topStocks.map(r => (
                 <div
                     key={r.ticker}
                     onClick={() => navigate(`/stocks/${r.ticker}`)}
-                    style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
-                    padding: '1rem 1.5rem',
-                    borderBottom: '1px solid var(--border)',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    className="grid grid-cols-3 px-6 py-4 border-b border-line cursor-pointer transition-colors duration-150 hover:bg-surface"
                 >
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                    <span className="font-mono text-[0.9rem] text-ink">
                     {r.ticker}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    <span className="font-mono text-[0.9rem] text-ink-muted">
                     {r.quarter}
                     </span>
-                    <span style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '0.9rem',
-                    color: r.predicted_return >= 0 ? 'var(--green)' : 'var(--red)',
-                    }}>
+                    <span className={`font-mono text-[0.9rem] ${r.predicted_return >= 0 ? 'text-accent' : 'text-danger'}`}>
                     {r.predicted_return >= 0 ? '+' : ''}{r.predicted_return.toFixed(2)}%
                     </span>
                 </div>

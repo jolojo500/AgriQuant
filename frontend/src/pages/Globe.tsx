@@ -93,7 +93,7 @@ export default function Globe() {
   ]
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', background: 'var(--bg-primary)' }}>
+    <div className="w-screen h-screen relative bg-canvas">
       <DeckGL
         views={new GlobeView({ resolution: 5 })}
         initialViewState={INITIAL_VIEW_STATE}
@@ -103,28 +103,21 @@ export default function Globe() {
 
       {/* Hover tooltip */}
       {hovered && (
-        <div style={{
-          position: 'fixed',
-          left: cursor.x + 16,
-          top: cursor.y + 16,
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-bright)',
-          borderRadius: '6px',
-          padding: '0.75rem 1rem',
-          pointerEvents: 'none',
-          zIndex: 10,
-        }}>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--green)', margin: '0 0 0.5rem', letterSpacing: '0.1em' }}>
+        <div
+          className="fixed bg-surface border border-line-strong rounded-md px-4 py-3 pointer-events-none z-10"
+          style={{ left: cursor.x + 16, top: cursor.y + 16 }}
+        >
+          <p className="font-mono text-[0.65rem] text-accent mt-0 mb-2 tracking-[0.1em]">
             {hovered.region.replace(/_/g, ' ').toUpperCase()} LAST 90 DAYS
           </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', margin: '0 0 0.25rem' }}>
-            Rain   <span style={{ color: 'var(--cyan)' }}>{hovered.rainfall_mm} mm</span>
+          <p className="font-mono text-[0.8rem] text-ink mt-0 mb-1">
+            Rain   <span className="text-cyan">{hovered.rainfall_mm} mm</span>
           </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', margin: '0 0 0.25rem' }}>
-            Temp   <span style={{ color: 'var(--amber)' }}>{hovered.temp_max}°C</span>
+          <p className="font-mono text-[0.8rem] text-ink mt-0 mb-1">
+            Temp   <span className="text-warn">{hovered.temp_max}°C</span>
           </p>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-primary)', margin: 0 }}>
-            Humidity  <span style={{ color: 'var(--text-secondary)' }}>{hovered.humidity}%</span>
+          <p className="font-mono text-[0.8rem] text-ink m-0">
+            Humidity  <span className="text-ink-muted">{hovered.humidity}%</span>
           </p>
         </div>
       )}

@@ -26,6 +26,11 @@ def get_weather_regions():
         rainfall   = sum(r["rainfall_mm"]  or 0 for r in rows)
         temp_max   = sum(r["temp_max"]     or 0 for r in rows) / len(rows)
         humidity   = sum(r["humidity"]     or 0 for r in rows) / len(rows)
+        solar      = sum(r["solar_radiation"] or 0 for r in rows) / len(rows)
+        wind       = sum(r["wind_speed"]      or 0 for r in rows) / len(rows)
+        # Same thresholds as transform_config's WEATHER_FEATURES — the globe shows what the model sees
+        drought_days     = sum(1 for r in rows if (r["rainfall_mm"] or 0) < 2.0)
+        heat_stress_days = sum(1 for r in rows if (r["temp_max"] or 0) > 35.0)
 
         results.append(
             WeatherRegion(
@@ -35,6 +40,10 @@ def get_weather_regions():
                 rainfall_mm=round(rainfall, 1),
                 temp_max=round(temp_max, 1),
                 humidity=round(humidity, 1),
+                solar_radiation=round(solar, 1),
+                wind_speed=round(wind, 1),
+                drought_days=drought_days,
+                heat_stress_days=heat_stress_days,
             )
         )
 

@@ -25,6 +25,10 @@ class WeatherRegion(BaseModel):
     rainfall_mm: float
     temp_max:    float
     humidity:    float
+    solar_radiation:  float  # avg MJ/m²/day over the window (NASA POWER)
+    wind_speed:       float  # avg m/s
+    drought_days:     int    # days < 2mm rain — same threshold as the ML feature
+    heat_stress_days: int    # days > 35°C   — same threshold as the ML feature
 
 class WeatherResponse(BaseModel):
     regions: list[WeatherRegion]

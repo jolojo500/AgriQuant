@@ -7,10 +7,11 @@ import { api } from '../api/client'
 import type { WeatherRegion } from '../types'
 
 const INITIAL_VIEW_STATE = {
-  longitude: 0,
-  latitude: 20,
+  longitude: -75,   // open on the Americas — 6 of 10 regions face-on
+  latitude: 15,
   zoom: 0.8,
 }
+
 
 // Footprint tint: cold = cyan token (#00CFFF), hot = amber token (#FFAA33).
 // 12°C..38°C covers Saskatchewan-to-Punjab in the live data.
@@ -73,6 +74,21 @@ export default function Globe() {
     return all
   }, [regions])
 
+  // Regions under real heat stres, same >35°C feature the model trains on
+  const hotRegions = useMemo(
+    () => regions.filter(r => (r.heat_stress_days ?? 0) > 30),
+    [regions]
+  )
+
+    // Humidity range across the current data — haze contrast stays relative in any season
+  const [hMin, hMax] = useMemo(() => {
+    if (!regions.length) return [0, 100]
+    const hs = regions.map(r => r.humidity ?? 0)
+    return [Math.min(...hs), Math.max(...hs)]
+  }, [regions])
+
+
+
 
 
  useEffect(() => {
@@ -118,6 +134,37 @@ export default function Globe() {
         })
       },
     }),
+    // Humidity haze — big, faint dome; denser air = more visible
+    new ScatterplotLayer({
+      id: 'humidity-haze',
+      data: regions,
+      getPosition: (d: WeatherRegion) => [d.lon, d.lat],
+      getRadius: 430000,
+      getFillColor: (d: WeatherRegion) => {
+        const h = hMax > hMin ? ((d.humidity ?? 0) - hMin) / (hMax - hMin) : 0.5
+        return [120, 190, 255, Math.round(12 + h * 48)]   // driest region alpha 12, wettest 60
+      },
+      stroked: false,
+      pickable: false,
+      updateTriggers: { getFillColor: [regions, hMin, hMax] },
+    }),
+
+    // Solar halo — ring brightness ∝ solar radiation (5..17 MJ/m²/day live range)
+    new ScatterplotLayer({
+      id: 'solar-halo',
+      data: regions,
+      getPosition: (d: WeatherRegion) => [d.lon, d.lat],
+      getRadius: 330000,
+      filled: false,
+      stroked: true,
+      getLineColor: (d: WeatherRegion) => {
+        const s = Math.min(1, Math.max(0, ((d.solar_radiation ?? 0) - 5) / 12))
+        return [255, 214, 120, Math.round(30 + s * 110)]
+      },
+      getLineWidth: 9000,
+      pickable: false,
+      updateTriggers: { getLineColor: [regions] },
+    }),
 
        // Ground footprint — weather over an *area*, tinted by real temperature
     new ScatterplotLayer({
@@ -132,6 +179,25 @@ export default function Globe() {
       pickable: true,
       onHover: handleHover,
       updateTriggers: { getFillColor: [regions], getLineColor: [regions] },
+    }),
+    // Heat shimmer — expanding radar pulse on heat-stressed regions, in --color-danger
+    new ScatterplotLayer({
+      id: 'heat-shimmer',
+      data: hotRegions,
+      getPosition: (d: WeatherRegion) => [d.lon, d.lat],
+      getRadius: (_d: WeatherRegion, { index }: { index: number }) => {
+        const p = (time * 0.45 + index * 0.37) % 1     // 0→1 expansion, de-synced per region
+        return 260000 * (1 + p * 0.9)
+      },
+      filled: false,
+      stroked: true,
+      getLineColor: (_d: WeatherRegion, { index }: { index: number }) => {
+        const p = (time * 0.45 + index * 0.37) % 1
+        return [255, 61, 90, Math.round((1 - p) * 110)] // fades as it expands
+      },
+      getLineWidth: 7000,
+      pickable: false,
+      updateTriggers: { getRadius: [time], getLineColor: [time] },
     }),
 
     // Rain — LineLayer streaks falling from RAIN_TOP, drifting with the wind

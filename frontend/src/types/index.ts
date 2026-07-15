@@ -28,6 +28,10 @@ export interface WeatherRegion {
   rainfall_mm: number
   temp_max: number
   humidity: number
+  solar_radiation: number   // avg MJ/m²/day (NASA POWER)
+  wind_speed: number        // avg m/s
+  drought_days: number      // days < 2mm rain (same threshold as the ML feature)
+  heat_stress_days: number  // days > 35°C   (same threshold as the ML feature)
 }
 
 export interface WeatherResponse {

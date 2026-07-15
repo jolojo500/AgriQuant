@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import DeckGL from '@deck.gl/react'
 import { _GlobeView as GlobeView } from '@deck.gl/core'
 import { TileLayer } from '@deck.gl/geo-layers'
-import { BitmapLayer, ScatterplotLayer } from '@deck.gl/layers'
+import { BitmapLayer, ScatterplotLayer, LineLayer } from '@deck.gl/layers'
 import { api } from '../api/client'
 import type { WeatherRegion } from '../types'
 
@@ -12,25 +12,83 @@ const INITIAL_VIEW_STATE = {
   zoom: 0.8,
 }
 
+// Footprint tint: cold = cyan token (#00CFFF), hot = amber token (#FFAA33).
+// 12°C..38°C covers Saskatchewan-to-Punjab in the live data.
+function tempColor(tempC: number, alpha = 60): [number, number, number, number] {
+  const x = Math.min(1, Math.max(0, (tempC - 12) / 26))
+  return [
+    Math.round(x * 255),        // 0   → 255
+    Math.round(207 - x * 37),   // 207 → 170
+    Math.round(255 - x * 204),  // 255 → 51
+    alpha,
+  ]
+}
+
+// One falling raindrop. phase de-syncs drops, slant carries the wind.
+type Drop = {
+  lon: number
+  lat: number
+  phase: number   // 0-1 head start so drops don't fall in lockstep
+  speed: number   // fall cycles per second
+  slant: number   // degrees of horizontal drift over one full fall (∝ wind_speed)
+}
+
+const RAIN_TOP = 450_000 // spawn altitude in meters — tall enough to read at zoom 0.8
+
+
 export default function Globe() {
   const [regions, setRegions] = useState<WeatherRegion[]>([])
   const [hovered, setHovered] = useState<WeatherRegion | null>(null)
   const [cursor, setCursor] = useState({ x: 0, y: 0 })
 
+  // Animation clock, one rAF loop driving every weather effect
+  const [time, setTime] = useState(0)
+  useEffect(() => {
+    let raf: number
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      setTime((now - t0) / 1000)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  // Drop field, regenerated only when region data changes, NOT per frame.
+  // Density and fall speed scale with real rainfall; slant with real wind.
+  const drops = useMemo(() => {
+    const all: Drop[] = []
+    for (const r of regions) {
+      const n = Math.min(60, Math.round(r.rainfall_mm / 6)) // 60mm → 10 drops, 400mm → 60
+      for (let i = 0; i < n; i++) {
+        all.push({
+          lon: r.lon + (Math.random() - 0.5) * 4.5,
+          lat: r.lat + (Math.random() - 0.5) * 3.5,
+          phase: Math.random(),
+          speed: 0.25 + Math.random() * 0.2 + r.rainfall_mm / 2000, // heavier rain falls faster
+          slant: (r.wind_speed ?? 0) * 0.35,
+        })
+      }
+    }
+    return all
+  }, [regions])
+
+
+
  useEffect(() => {
     api.getWeather()
         .then(data => setRegions(data.regions))
         .catch(() => setRegions([
-        { region: 'iowa',            lat: 42.0,  lon: -93.6, rainfall_mm: 180, temp_max: 28, humidity: 72 },
-        { region: 'kansas',          lat: 38.7,  lon: -98.4, rainfall_mm: 95,  temp_max: 34, humidity: 45 },
-        { region: 'mato_grosso',     lat: -12.6, lon: -55.9, rainfall_mm: 310, temp_max: 31, humidity: 80 },
-        { region: 'parana',          lat: -23.4, lon: -51.9, rainfall_mm: 240, temp_max: 27, humidity: 75 },
-        { region: 'buenos_aires_ag', lat: -36.6, lon: -63.8, rainfall_mm: 120, temp_max: 22, humidity: 60 },
-        { region: 'saskatchewan',    lat: 52.1,  lon: -106.7, rainfall_mm: 60, temp_max: 18, humidity: 50 },
-        { region: 'heilongjiang',    lat: 47.0,  lon: 128.9, rainfall_mm: 145, temp_max: 24, humidity: 65 },
-        { region: 'henan',           lat: 34.0,  lon: 113.7, rainfall_mm: 200, temp_max: 30, humidity: 70 },
-        { region: 'punjab_india',    lat: 30.9,  lon: 75.9,  rainfall_mm: 85,  temp_max: 38, humidity: 40 },
-        { region: 'maharashtra',     lat: 19.7,  lon: 75.7,  rainfall_mm: 270, temp_max: 33, humidity: 78 },
+        { region: 'iowa',            lat: 42.0,  lon: -93.6,  rainfall_mm: 180, temp_max: 28, humidity: 72, solar_radiation: 18, wind_speed: 4.2, drought_days: 41, heat_stress_days: 2  },
+        { region: 'kansas',          lat: 38.7,  lon: -98.4,  rainfall_mm: 95,  temp_max: 34, humidity: 45, solar_radiation: 22, wind_speed: 5.8, drought_days: 63, heat_stress_days: 21 },
+        { region: 'mato_grosso',     lat: -12.6, lon: -55.9,  rainfall_mm: 310, temp_max: 31, humidity: 80, solar_radiation: 20, wind_speed: 2.1, drought_days: 22, heat_stress_days: 8  },
+        { region: 'parana',          lat: -23.4, lon: -51.9,  rainfall_mm: 240, temp_max: 27, humidity: 75, solar_radiation: 17, wind_speed: 2.8, drought_days: 30, heat_stress_days: 1  },
+        { region: 'buenos_aires_ag', lat: -36.6, lon: -63.8,  rainfall_mm: 120, temp_max: 22, humidity: 60, solar_radiation: 14, wind_speed: 4.9, drought_days: 55, heat_stress_days: 0  },
+        { region: 'saskatchewan',    lat: 52.1,  lon: -106.7, rainfall_mm: 60,  temp_max: 18, humidity: 50, solar_radiation: 12, wind_speed: 4.5, drought_days: 70, heat_stress_days: 0  },
+        { region: 'heilongjiang',    lat: 47.0,  lon: 128.9,  rainfall_mm: 145, temp_max: 24, humidity: 65, solar_radiation: 15, wind_speed: 3.4, drought_days: 48, heat_stress_days: 0  },
+        { region: 'henan',           lat: 34.0,  lon: 113.7,  rainfall_mm: 200, temp_max: 30, humidity: 70, solar_radiation: 16, wind_speed: 2.6, drought_days: 38, heat_stress_days: 6  },
+        { region: 'punjab_india',    lat: 30.9,  lon: 75.9,   rainfall_mm: 85,  temp_max: 38, humidity: 40, solar_radiation: 24, wind_speed: 3.1, drought_days: 68, heat_stress_days: 35 },
+        { region: 'maharashtra',     lat: 19.7,  lon: 75.7,   rainfall_mm: 270, temp_max: 33, humidity: 78, solar_radiation: 19, wind_speed: 3.7, drought_days: 26, heat_stress_days: 12 },
         ]))
 
     }, [])
@@ -61,34 +119,37 @@ export default function Globe() {
       },
     }),
 
-    // Glow outer ring
+       // Ground footprint — weather over an *area*, tinted by real temperature
     new ScatterplotLayer({
-      id: 'regions-glow',
+      id: 'region-footprint',
       data: regions,
       getPosition: (d: WeatherRegion) => [d.lon, d.lat],
-      getRadius: 300000,
-      getFillColor: [0, 255, 136, 40],  // green, very transparent
-      stroked: false,
-      pickable: false,
-    }),
-
-    // Inner dot
-    new ScatterplotLayer({
-      id: 'regions-dot',
-      data: regions,
-      getPosition: (d: WeatherRegion) => [d.lon, d.lat],
-      getRadius: 80000,
-      getFillColor: (d: WeatherRegion) => {
-        // Color by rainfall — more rain = brighter green
-        const intensity = Math.min(d.rainfall_mm / 300, 1)
-        return [0, Math.floor(180 + intensity * 75), Math.floor(100 + intensity * 36), 255]
-      },
+      getRadius: 260000,
+      getFillColor: (d: WeatherRegion) => tempColor(d.temp_max),
       stroked: true,
-      getLineColor: [0, 255, 136, 120],
-      getLineWidth: 15000,
+      getLineColor: (d: WeatherRegion) => tempColor(d.temp_max, 140),
+      getLineWidth: 12000,
       pickable: true,
       onHover: handleHover,
-      updateTriggers: { getFillColor: [regions] },
+      updateTriggers: { getFillColor: [regions], getLineColor: [regions] },
+    }),
+
+    // Rain — LineLayer streaks falling from RAIN_TOP, drifting with the wind
+    new LineLayer({
+      id: 'rain',
+      data: drops,
+      getSourcePosition: (d: Drop) => {
+        const p = (time * d.speed + d.phase) % 1            // 0→1 fall progress
+        return [d.lon + p * d.slant, d.lat, RAIN_TOP * (1 - p)]
+      },
+      getTargetPosition: (d: Drop) => {
+        const p = (time * d.speed + d.phase) % 1
+        return [d.lon + p * d.slant, d.lat, Math.max(0, RAIN_TOP * (1 - p) - 55_000)]
+      },
+      getColor: [0, 207, 255, 160], // --color-cyan
+      getWidth: 2,
+      widthUnits: 'pixels',
+      updateTriggers: { getSourcePosition: [time], getTargetPosition: [time] },
     }),
   ]
 
@@ -118,6 +179,12 @@ export default function Globe() {
           </p>
           <p className="font-mono text-[0.8rem] text-ink m-0">
             Humidity  <span className="text-ink-muted">{hovered.humidity}%</span>
+          </p>
+                    <p className="font-mono text-[0.8rem] text-ink mt-0 mb-1">
+            Solar  <span className="text-warn">{hovered.solar_radiation} MJ/m²</span> · Wind <span className="text-cyan">{hovered.wind_speed} m/s</span>
+          </p>
+          <p className="font-mono text-[0.8rem] text-ink m-0">
+            Drought <span className="text-danger">{hovered.drought_days}d</span> · Heat stress <span className="text-danger">{hovered.heat_stress_days}d</span>
           </p>
         </div>
       )}

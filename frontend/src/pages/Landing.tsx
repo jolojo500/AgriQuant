@@ -117,7 +117,7 @@ export default function Landing() {
         <div className="flex flex-col gap-0">
             {steps.map(({ number, title, description }) => (
             <div key={number} className="grid grid-cols-[80px_1fr] gap-8 py-8 border-t border-line">
-                <span className="font-mono text-[0.75rem] text-ink pt-[0.2rem]">
+                <span className="font-mono text-[0.75rem] text-ink-faint pt-[0.2rem]">
                 {number}
                 </span>
                 <div>
@@ -149,7 +149,7 @@ export default function Landing() {
             {/* Header */}
             <div className="grid grid-cols-3 px-6 py-3 border-b border-line">
             {['Ticker', 'Quarter', 'Predicted Return'].map(h => (
-                <span key={h} className="font-mono text-[0.65rem] text-ink tracking-[0.1em] uppercase">
+                <span key={h} className="font-mono text-[0.65rem] text-ink-faint tracking-[0.1em] uppercase">
                 {h}
                 </span>
             ))}
@@ -158,7 +158,7 @@ export default function Landing() {
             {/* Rows */}
             {topStocks.length === 0
             ? <div className="px-6 py-8">
-                <span className="font-mono text-[0.8rem] text-ink">
+                <span className="font-mono text-[0.8rem] text-ink-faint">
                     Loading...
                 </span>
                 </div>

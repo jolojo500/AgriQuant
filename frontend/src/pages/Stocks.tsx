@@ -65,7 +65,7 @@ export default function Stocks() {
           <>
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr] px-6 py-3 border-b border-line">
               {['Ticker', 'Quarter', 'Predicted Return', 'Model'].map(h => (
-                <span key={h} className="font-mono text-[0.65rem] text-ink tracking-[0.1em] uppercase">
+                <span key={h} className="font-mono text-[0.65rem] text-ink-faint tracking-[0.1em] uppercase">
                   {h}
                 </span>
               ))}
@@ -81,7 +81,7 @@ export default function Stocks() {
                 <span className={`font-mono text-[0.9rem] ${r.predicted_return >= 0 ? 'text-accent' : 'text-danger'}`}>
                   {r.predicted_return >= 0 ? '+' : ''}{r.predicted_return.toFixed(2)}%
                 </span>
-                <span className="font-mono text-[0.75rem] text-ink">{r.model_version}</span>
+                <span className="font-mono text-[0.75rem] text-ink-faint">{r.model_version}</span>
               </div>
             ))}
           </>
@@ -89,7 +89,7 @@ export default function Stocks() {
           <>
             <div className="grid grid-cols-[2fr_1fr_1fr] px-6 py-3 border-b border-line">
               {['Ticker', 'Direction Accuracy', 'Quarters Tracked'].map(h => (
-                <span key={h} className="font-mono text-[0.65rem] text-ink tracking-[0.1em] uppercase">
+                <span key={h} className="font-mono text-[0.65rem] text-ink-faint tracking-[0.1em] uppercase">
                   {h}
                 </span>
               ))}

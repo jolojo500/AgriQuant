@@ -203,7 +203,7 @@ def run_training() -> None: # this is basically __main__ fro external use
     print(f"Saved to {MODEL_PATH}")
 
     baseline_rmse = float(y.std())
-    print(f"  Baseline (predict 0%)  → RMSE: {baseline_rmse:.4f}%")
+    print(f"  Baseline (predict 0%)  -> RMSE: {baseline_rmse:.4f}%")  # ASCII: Windows consoles choke on unicode arrows
 
     # Feature importance — the quant-readable part
     feature_importance_dict = print_feature_importance(final_model, X, best_name)
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     print(f"Saved to {MODEL_PATH}")
 
     baseline_rmse = float(y.std())
-    print(f"  Baseline (predict 0%)  → RMSE: {baseline_rmse:.4f}%")
+    print(f"  Baseline (predict 0%)  -> RMSE: {baseline_rmse:.4f}%")  # ASCII: Windows consoles choke on unicode arrows
 
     # Feature importance — the quant-readable part
     feature_importance_dict = print_feature_importance(final_model, X, best_name)

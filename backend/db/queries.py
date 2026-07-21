@@ -177,11 +177,25 @@ def read_raw_prices_df(ticker: str) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"])
     return df.set_index("date")
 
+def _next_quarter(q: str) -> str:
+    """'2024Q4' → '2025Q1'."""
+    year, n = int(q[:4]), int(q[5])
+    return f"{year + 1}Q1" if n == 4 else f"{year}Q{n + 1}"
+
+
+def _prev_quarter(q: str) -> str:
+    """'2025Q1' → '2024Q4'."""
+    year, n = int(q[:4]), int(q[5])
+    return f"{year - 1}Q4" if n == 1 else f"{year}Q{n - 1}"
+
+
 def fill_actual_returns() -> None:
     """
     After each quarterly pipeline, fills actual_return in ml_predictions
     for quarters that have now closed.
-    Reads actual returns from ml_features (target column).
+    Convention: ml_predictions.quarter = the quarter whose return was PREDICTED.
+    Its actual return lives in the PREVIOUS quarter's feature row
+    (ml_features.target = next-quarter return).
     """
     # Get all predictions still missing actual_return
     response = (
@@ -200,12 +214,12 @@ def fill_actual_returns() -> None:
 
     filled = 0
     for ticker, quarter in pairs:
-        # Look up actual return from ml_features (target column)
+        # Actual return of predicted quarter Q = target of feature row Q-1
         result = (
             supabase.table("ml_features")
             .select("target")
             .eq("ticker", ticker)
-            .eq("quarter", quarter)
+            .eq("quarter", _prev_quarter(quarter))
             .execute()
         )
 
@@ -320,6 +334,12 @@ def backfill_predictions(df: pd.DataFrame, model_version: str, min_quarter: str 
     """
     if df.empty:
         return
+
+    # Walk-forward folds arrive keyed by their INPUT quarter; relabel to the
+    # quarter actually being predicted so the whole table speaks one convention
+    # (same one predict.py uses).
+    df = df.copy()
+    df["quarter"] = df["quarter"].map(_next_quarter)
 
     df = df[df["quarter"] >= min_quarter]
     if df.empty:

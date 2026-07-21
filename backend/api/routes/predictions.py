@@ -55,9 +55,11 @@ def get_rankings():
     if df.empty:
         return RankingsResponse(rankings=[])
 
-    # Keep only the most recent prediction per ticker
+    # Latest = highest predicted quarter per ticker. created_at only breaks ties:
+    # bulk backfills stamp every row with the same timestamp, so sorting on it
+    # alone made the pick arbitrary (and flicker between requests).
     latest = (
-        df.sort_values("created_at", ascending=False)
+        df.sort_values(["quarter", "created_at"], ascending=False)
         .groupby("ticker")
         .first()
         .reset_index()

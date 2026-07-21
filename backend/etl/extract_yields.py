@@ -67,14 +67,28 @@ def download_faostat_bulk() -> pd.DataFrame:
     response.raise_for_status()
 
     # Unzip in memory — no temp files needed
+    # Stream in chunks and keep only rows we can ever use (Yield rows for our
+    # crops/countries, columns parse_yields reads): the full normalized CSV is
+    # millions of rows and a one-shot read_csv blows small-RAM hosts (likely
+    # what OOM-killed the July 1 quarterly run on Render's 512MB instance).
+    # NOTE: cache is filtered to FAO_CROPS/FAO_COUNTRIES — delete
+    # faostat_cache.csv after adding crops/countries so it refetches.
+    keep_items = set(FAO_CROPS.values())
+    keep_areas = set(FAO_COUNTRIES.values())
+    usecols = ["Area", "Item", "Element", "Year", "Unit", "Value"]
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
         # The normalized file inside the zip
         csv_filename = [f for f in z.namelist() if "Normalized" in f][0]
         with z.open(csv_filename) as f:
-            df = pd.read_csv(f, encoding="latin1", low_memory=False)
-
-    # Keep only Yield rows — reduces size massively
-    df = df[df["Element"] == "Yield"].copy()
+            chunks = [
+                chunk[
+                    (chunk["Element"] == "Yield")
+                    & chunk["Item"].isin(keep_items)
+                    & chunk["Area"].isin(keep_areas)
+                ]
+                for chunk in pd.read_csv(f, encoding="latin1", chunksize=200_000, usecols=usecols)
+            ]
+    df = pd.concat(chunks, ignore_index=True)
 
     # Cache for future runs
     df.to_csv(cache_path, index=False)

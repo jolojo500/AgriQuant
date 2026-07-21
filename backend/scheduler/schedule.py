@@ -212,9 +212,18 @@ def _drop_incomplete_quarter(df: pd.DataFrame) -> pd.DataFrame:
     Only fully closed quarters should ever be used for training —
     a partial quarter has incomplete price/weather data and would
     look like a real data point when it isn't one yet.
+
+    Also nulls the LAST CLOSED quarter's target: it is the return of the
+    currently open quarter, which a mid-quarter run computes from partial
+    prices (shift(-1) runs before this drop). Scheduled day-1 runs have no
+    open-quarter prices yet, so there this is a no-op — but manual
+    mid-quarter runs would otherwise write partial returns into training
+    targets and into fill_actual_returns.
     """
-    current_quarter_start = pd.Timestamp(date.today()).to_period("Q").start_time
-    return df[df.index < current_quarter_start]
+    current_q = pd.Timestamp(date.today()).to_period("Q")
+    df = df[df.index < current_q.start_time].copy()
+    df.loc[df.index.to_period("Q") == current_q - 1, "stock_return_next_q"] = float("nan")
+    return df
 
 if __name__ == "__main__":
     scheduler = BlockingScheduler(timezone="UTC")
